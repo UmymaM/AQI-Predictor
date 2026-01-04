@@ -125,16 +125,14 @@ def main():
 
     print("main function started!")
     lat, lon = 29.3978, 71.6752
+    print("will start fetching data")
+
 
     weather_df=fetch2MonthsWeatherData(lat,lon)
     pollutants_df=fetch2MonthsPollutantData(lat,lon)
     saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
     saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
 
-
-
-    # weather_df.to_parquet(path="D:/umyma/Internship 10Pearls/AQI_Predictor/data/raw/weather_data_bwp.parquet")
-    # pollutants_df.to_parquet(path="D:/umyma/Internship 10Pearls/AQI_Predictor/data/raw/pollutants_data_bwp.parquet")
 
     print("Data Ingested Successfully!!!! :D")
 

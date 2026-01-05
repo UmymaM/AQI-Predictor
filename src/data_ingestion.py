@@ -43,7 +43,7 @@ def fetch2MonthsWeatherData(lat,lon):
     hourly_precipitation = hourly.Variables(5).ValuesAsNumpy()
     hourly_cloud_cover_low = hourly.Variables(6).ValuesAsNumpy()
 
-    hourly_data = {"date": pd.date_range(
+    hourly_data = {"timestamp": pd.date_range(
         start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
         end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
         freq = pd.Timedelta(seconds = hourly.Interval()),
@@ -121,17 +121,55 @@ def saveToParquet(df,path):
     df.to_parquet(path,index=False)        
 
 
+# def mergeDataframes(df1,df2):
+
+def mergeDataframes(weather_df, pollutants_df):
+
+    # Ensure timestamps are datetime and UTC
+    weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"], utc=True)
+    pollutants_df["timestamp"] = pd.to_datetime(pollutants_df["timestamp"], utc=True)
+
+    # Sort (important for time series)
+    weather_df = weather_df.sort_values("timestamp")
+    pollutants_df = pollutants_df.sort_values("timestamp")
+
+    # Merge on timestamp
+    merged_df = pd.merge(
+        weather_df,
+        pollutants_df,
+        on="timestamp",
+        how="inner"
+    )
+
+    print(f"Merged dataframe shape: {merged_df.shape}")
+    return merged_df
+
+    
+
+
 def main():
 
     print("main function started!")
     lat, lon = 29.3978, 71.6752
     print("will start fetching data")
+    print("testing a theory")
 
 
     weather_df=fetch2MonthsWeatherData(lat,lon)
     pollutants_df=fetch2MonthsPollutantData(lat,lon)
-    saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
-    saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
+
+    # weather_df.to_csv(path=f"{basePath}/weather_data_bwp.csv")
+    # pollutants_df.to_csv(f"{basePath}/pollutant_data_bwp.csv")
+    # saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
+    # saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
+
+    merged_df=mergeDataframes(weather_df,pollutants_df)
+    saveToParquet(merged_df,path=f"{basePath}/merged_data_bwp.parquet")
+    merged_df.to_csv(path_or_buf=f"{basePath}/merged_data_bwp.csv")
+    
+
+    print("Running test script:")
+    weather_df.to_csv("test.csv", index=False)
 
 
     print("Data Ingested Successfully!!!! :D")

@@ -7,7 +7,7 @@ import openmeteo_requests
 from pathlib import Path
 
 basePath="data/raw"
-
+lat, lon = 29.3978, 71.6752
 
 def fetch2MonthsWeatherData(lat,lon):
     print("entering weather function")
@@ -113,69 +113,80 @@ def fetch2MonthsPollutantData(lat,lon):
     print(f"Fetched Pollutant Data:  {len(pollutants_dataframe)} rows")
     return pollutants_dataframe
 
-def ensureDirExists(path):
-    Path(path).mkdir(parents=True,exist_ok=True)
+# def ensureDirExists(path):
+#     Path(path).mkdir(parents=True,exist_ok=True)
 
-def saveToParquet(df,path):
-    Path(path).parent.mkdir(parents=True,exist_ok=True)
-    df.to_parquet(path,index=False)        
+# def saveToParquet(df,path):
+#     Path(path).parent.mkdir(parents=True,exist_ok=True)
+#     df.to_parquet(path,index=False)        
 
 
 # def mergeDataframes(df1,df2):
 
-def mergeDataframes(weather_df, pollutants_df):
+# def mergeDataframes(weather_df, pollutants_df):
 
-    # Ensure timestamps are datetime and UTC
-    weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"], utc=True)
-    pollutants_df["timestamp"] = pd.to_datetime(pollutants_df["timestamp"], utc=True)
+#     # Ensure timestamps are datetime and UTC
+#     weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"], utc=True)
+#     pollutants_df["timestamp"] = pd.to_datetime(pollutants_df["timestamp"], utc=True)
 
-    # Sort (important for time series)
-    weather_df = weather_df.sort_values("timestamp")
-    pollutants_df = pollutants_df.sort_values("timestamp")
+#     # Sort (important for time series)
+#     weather_df = weather_df.sort_values("timestamp")
+#     pollutants_df = pollutants_df.sort_values("timestamp")
 
-    # Merge on timestamp
-    merged_df = pd.merge(
-        weather_df,
-        pollutants_df,
-        on="timestamp",
-        how="inner"
+#     # Merge on timestamp
+#     merged_df = pd.merge(
+#         weather_df,
+#         pollutants_df,
+#         on="timestamp",
+#         how="inner"
+#     )
+
+#     print(f"Merged dataframe shape: {merged_df.shape}")
+#     return merged_df
+
+def ingest() -> pd.DataFrame:
+    weather = fetch2MonthsWeatherData(lat, lon)
+    pollutants = fetch2MonthsPollutantData(lat, lon)
+
+    df = (
+        weather
+        .merge(pollutants, on="timestamp", how="inner")
+        .sort_values("timestamp")
+        .reset_index(drop=True)
     )
 
-    print(f"Merged dataframe shape: {merged_df.shape}")
-    return merged_df
+    return df
 
+
+# def main():
+
+#     print("main function started!")
+#     lat, lon = 29.3978, 71.6752
+#     print("will start fetching data")
+#     print("testing a theory")
+
+
+#     weather_df=fetch2MonthsWeatherData(lat,lon)
+#     pollutants_df=fetch2MonthsPollutantData(lat,lon)
+
+#     # weather_df.to_csv(path=f"{basePath}/weather_data_bwp.csv")
+#     # pollutants_df.to_csv(f"{basePath}/pollutant_data_bwp.csv")
+#     # saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
+#     # saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
+
+#     merged_df=mergeDataframes(weather_df,pollutants_df)
+#     saveToParquet(merged_df,path=f"{basePath}/merged_data_bwp.parquet")
+#     merged_df.to_csv(path_or_buf=f"{basePath}/merged_data_bwp.csv")
     
 
-
-def main():
-
-    print("main function started!")
-    lat, lon = 29.3978, 71.6752
-    print("will start fetching data")
-    print("testing a theory")
+#     print("Running test script:")
+#     weather_df.to_csv("test.csv", index=False)
 
 
-    weather_df=fetch2MonthsWeatherData(lat,lon)
-    pollutants_df=fetch2MonthsPollutantData(lat,lon)
+#     print("Data Ingested Successfully!!!! :D")
 
-    # weather_df.to_csv(path=f"{basePath}/weather_data_bwp.csv")
-    # pollutants_df.to_csv(f"{basePath}/pollutant_data_bwp.csv")
-    # saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
-    # saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
-
-    merged_df=mergeDataframes(weather_df,pollutants_df)
-    saveToParquet(merged_df,path=f"{basePath}/merged_data_bwp.parquet")
-    merged_df.to_csv(path_or_buf=f"{basePath}/merged_data_bwp.csv")
-    
-
-    print("Running test script:")
-    weather_df.to_csv("test.csv", index=False)
-
-
-    print("Data Ingested Successfully!!!! :D")
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print("ERROR:", e)
+# if __name__ == "__main__":
+#     try:
+#         main()
+#     except Exception as e:
+#         print("ERROR:", e)

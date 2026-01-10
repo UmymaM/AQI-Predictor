@@ -4,6 +4,7 @@ import numpy as np
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
+    df=df.copy()
 
     # Time features
     df["hour"] = df["timestamp"].dt.hour
@@ -28,7 +29,6 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Final feature selection
     drop_cols = [
-        "day",
         "carbon_dioxide",
         "cloud_cover_low",
         "wind_direction_10m"
@@ -38,10 +38,10 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-if __name__ == "__main__":
-    merged_df=pd.read_parquet("data\\raw\\merged_data_bwp.parquet")
-    df_features=build_features(merged_df)
-    df_features.to_parquet("data\\processed\\aqi_features_bwp.parquet",index=False)
-    df_features.to_csv("data\\processed\\aqi_features_bwp.csv",index=False)
-    print("Fetaure generation complete! Data shape: ",df_features.shape)
+# if __name__ == "__main__":
+#     merged_df=pd.read_parquet("data\\raw\\merged_data_bwp.parquet")
+#     df_features=build_features(merged_df)
+#     df_features.to_parquet("data\\processed\\aqi_features_bwp.parquet",index=False)
+#     df_features.to_csv("data\\processed\\aqi_features_bwp.csv",index=False)
+#     print("Fetaure generation complete! Data shape: ",df_features.shape)
     

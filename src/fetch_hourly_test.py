@@ -181,6 +181,7 @@ def build_hourly_features():
             subset=["timestamp"],
             keep="last"
         ).sort_values("timestamp")
+        combined_df["timestamp"] = pd.to_datetime(combined_df["timestamp"], utc=True)
         
         print(f"✓ Combined: {len(combined_df)} rows")
 

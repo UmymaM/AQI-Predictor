@@ -223,7 +223,7 @@ def build_hourly_features():
         print("INSERTING TO HOPSWORKS")
         print("=" * 70)
         
-        fg.insert(latest, write_options={"wait_for_job": True})
+        fg.insert(latest, write_options={"wait_for_job": False})
 
         print("\n" + "=" * 70)
         print("✅ HOURLY FEATURES INSERTED SUCCESSFULLY")

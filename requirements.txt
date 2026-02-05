@@ -3,5 +3,8 @@ pandas
 numpy
 requests
 python-dotenv
-hopsworks
-hsfs
+scikit-learn
+xgboost
+joblib
+shap
+matplotlib

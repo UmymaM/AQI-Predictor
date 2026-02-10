@@ -1,7 +1,3 @@
-#  training a model to predict 3 values, unlike my previous approach where a model would predict a
-# single horizon only, keepin 3 models for 3 horizons made the app heavier and introduced latency in the interface's
-# load time. to cater to this problem, i am now using the multi ouput regression approach
-
 import os
 import json
 import shutil

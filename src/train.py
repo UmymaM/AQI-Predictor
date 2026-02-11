@@ -45,7 +45,6 @@ def get_hopsworks_project():
     api_key = os.getenv("HOPSWORKS_API_KEY")
     if not project_name or not api_key:
         raise RuntimeError("HOPSWORKS_PROJECT or HOPSWORKS_API_KEY not set in .env")
-    print(f"Connecting to Hopsworks project: {project_name}")
     return hopsworks.login(project=project_name, api_key_value=api_key)
 
 
@@ -79,7 +78,6 @@ def create_unified_dataset(df: pd.DataFrame) -> pd.DataFrame:
         feature_cols = BASE_FEATURES + ['horizon', 'target']
         df_horizon = df_horizon[feature_cols]
         rows.append(df_horizon)
-        print(f"  {h}h horizon: {len(df_horizon)} samples")
     
     # Combine all horizons into one dataset
     unified_df = pd.concat(rows, ignore_index=True)
@@ -142,8 +140,7 @@ def train_unified_model(df: pd.DataFrame) -> Tuple[str, object, Dict, List[str]]
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         shuffle=False  
-    )
-    print(f"  Train size: {len(X_train):,} samples \n Test size: {len(X_test):,} samples")
+        )
     candidates = get_model_candidates()
     best_name = None
     best_model = None
@@ -151,9 +148,6 @@ def train_unified_model(df: pd.DataFrame) -> Tuple[str, object, Dict, List[str]]
     all_metrics = {}
     # Train and evaluate each model
     for name, model in candidates.items():
-        print(f"\n{'='*70}")
-        print(f"Training: {name.upper()}")
-        print(f"{'='*70}")
         # Train
         model.fit(X_train, y_train)
         # Predict
@@ -166,10 +160,6 @@ def train_unified_model(df: pd.DataFrame) -> Tuple[str, object, Dict, List[str]]
         mae_test = mean_absolute_error(y_test, y_pred_test)
         r2_test = r2_score(y_test, y_pred_test)
         
-        print(f"  Train RMSE: {rmse_train:.4f}")
-        print(f"  Test RMSE:  {rmse_test:.4f}")
-        print(f"  Test MAE:   {mae_test:.4f}")
-        print(f"  Test R²:    {r2_test:.4f}")
         # per horizon metrics
         horizon_metrics = {}
         print(f"\n  Per-Horizon Performance:")
@@ -204,11 +194,6 @@ def train_unified_model(df: pd.DataFrame) -> Tuple[str, object, Dict, List[str]]
             best_rmse = rmse_test
             print(f"New best model!")
 
-    print(f"  Best model: {best_name.upper()}")
-    print(f"  Test RMSE: {best_rmse:.4f}")
-    print(f"  Test MAE:  {all_metrics[best_name]['overall']['mae']:.4f}")
-    print(f"  Test R²:   {all_metrics[best_name]['overall']['r2']:.4f}")
-
     return best_name, best_model, all_metrics, feature_cols
 
 
@@ -223,7 +208,6 @@ def perform_shap_analysis(model, X_train: np.ndarray,  feature_names: List[str],
         indices = np.random.choice(len(X_train), size=sample_size, replace=False)
         X_shap = X_train[indices]
 
-        print("SHAP Explainer")
         if model_name in ['rf', 'gbr', 'xgboost', 'lightgbm', 'extratrees']:
             explainer = shap.TreeExplainer(model)
         else:
@@ -245,7 +229,7 @@ def perform_shap_analysis(model, X_train: np.ndarray,  feature_names: List[str],
         return True
         
     except Exception as e:
-        print(f"⚠️  SHAP analysis failed: {e}")
+        print(f"SHAP analysis failed: {e}")
         return False
     
 
@@ -263,17 +247,17 @@ def save_unified_model(project, model_obj, model_name: str,metrics: Dict,
         # 1. Save model
         model_file = os.path.join(model_dir, "model.pkl")
         joblib.dump(model_obj, model_file)
-        print(f"Model saved to temp file: {model_file}")
-        #2.  Save feature names
+        
+        #2.  Save feature names to temp file
         features_file = os.path.join(model_dir, "features.json")
         with open(features_file, 'w') as f:
             json.dump({"feature_names": feature_names}, f, indent=2)
-        print(f"Features saved to temp file: {features_file}")
+        
         #3. Save detailed metrics
         metrics_file = os.path.join(model_dir, "detailed_metrics.json")
         with open(metrics_file, 'w') as f:
             json.dump(all_metrics, f, indent=2)
-        print(f"Metrics saved to temp file: {metrics_file}")
+        
         # Create model in registry
         py_model = mr.sklearn.create_model(
             name=registry_name,
@@ -306,9 +290,6 @@ def train_and_evaluate() -> Tuple[Dict, str]:
     #connecting to hopsworks + loading features
     project = get_hopsworks_project()
     df = load_features_from_hopsworks()
-
-    print(f"  Total rows: {len(df):,}")
-    print(f"  Date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
     
     # adding horizons as features + training model
     unified_df = create_unified_dataset(df)

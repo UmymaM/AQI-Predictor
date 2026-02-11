@@ -59,4 +59,4 @@ plotly>=5.24.0
 
 # Platform
 streamlit>=1.40.0
-hopsworks[python]==4.2.*
+hopsworks>=4.6.4

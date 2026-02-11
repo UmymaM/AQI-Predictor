@@ -1,0 +1,135 @@
+{
+  "version": "2026-01-23_0021",
+  "timestamp": "2026-01-23T00:21:42.318964+05:00",
+  "feature_names": [
+    "pm25_lag1",
+    "pm25_lag6",
+    "pm25_lag24",
+    "pm25_ma6",
+    "pm25_ma24",
+    "pm25_std6",
+    "pm25_std24",
+    "pm25_change_1hr",
+    "pm25_change_24hr",
+    "temperature_2m",
+    "relative_humidity_2m",
+    "wind_speed_10m",
+    "pressure_msl",
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "month_sin",
+    "month_cos",
+    "is_weekend",
+    "temp_forecast_24h",
+    "humidity_forecast_24h",
+    "wind_forecast_24h",
+    "pressure_forecast_24h",
+    "temp_delta_24h",
+    "humidity_delta_24h",
+    "wind_delta_24h",
+    "temp_forecast_48h",
+    "humidity_forecast_48h",
+    "wind_forecast_48h",
+    "pressure_forecast_48h",
+    "temp_delta_48h",
+    "humidity_delta_48h",
+    "wind_delta_48h",
+    "temp_forecast_72h",
+    "humidity_forecast_72h",
+    "wind_forecast_72h",
+    "pressure_forecast_72h",
+    "temp_delta_72h",
+    "humidity_delta_72h",
+    "wind_delta_72h",
+    "hour",
+    "day_of_week",
+    "month"
+  ],
+  "total_samples": 6048,
+  "date_range": {
+    "start": "2025-05-04 00:00:00+00:00",
+    "end": "2026-01-10 23:00:00+00:00"
+  },
+  "horizons": {
+    "h24": {
+      "target": "pm25_tplus_24",
+      "best_model": "ridge",
+      "metrics": {
+        "ridge": {
+          "rmse": 38.79164130451409,
+          "mae": 28.53608582537694,
+          "r2": 0.3547679525031636
+        },
+        "rf": {
+          "rmse": 41.14080220533897,
+          "mae": 29.102998307744876,
+          "r2": 0.27425319810204496
+        },
+        "gbr": {
+          "rmse": 40.87340796985888,
+          "mae": 29.054984061703305,
+          "r2": 0.28365650837767376
+        },
+        "xgboost": {
+          "rmse": 41.8577287726868,
+          "mae": 29.654054641723633,
+          "r2": 0.24873888492584229
+        }
+      }
+    },
+    "h48": {
+      "target": "pm25_tplus_48",
+      "best_model": "xgboost",
+      "metrics": {
+        "ridge": {
+          "rmse": 42.97831768254104,
+          "mae": 30.844971216462078,
+          "r2": 0.20507967313065478
+        },
+        "rf": {
+          "rmse": 40.73836232286158,
+          "mae": 29.362704383841827,
+          "r2": 0.28578015710886306
+        },
+        "gbr": {
+          "rmse": 40.671339735921215,
+          "mae": 29.547413404289948,
+          "r2": 0.2881282870758036
+        },
+        "xgboost": {
+          "rmse": 40.13577116430087,
+          "mae": 29.23154067993164,
+          "r2": 0.3067529797554016
+        }
+      }
+    },
+    "h72": {
+      "target": "pm25_tplus_72",
+      "best_model": "gbr",
+      "metrics": {
+        "ridge": {
+          "rmse": 48.167414087244396,
+          "mae": 35.732527660877885,
+          "r2": 0.01867236757973656
+        },
+        "rf": {
+          "rmse": 39.54566392773485,
+          "mae": 28.572714360077804,
+          "r2": 0.3385376832829401
+        },
+        "gbr": {
+          "rmse": 37.94177525280896,
+          "mae": 27.48360731535894,
+          "r2": 0.3911046472005494
+        },
+        "xgboost": {
+          "rmse": 38.373137487884186,
+          "mae": 27.6568603515625,
+          "r2": 0.377180814743042
+        }
+      }
+    }
+  }
+}

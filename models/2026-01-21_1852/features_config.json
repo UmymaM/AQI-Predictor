@@ -1,0 +1,24 @@
+{
+  "feature_names": [
+    "pm25_lag1",
+    "pm25_lag6",
+    "pm25_lag24",
+    "pm25_ma6",
+    "pm25_ma24",
+    "pm25_change_1hr",
+    "temperature_2m",
+    "relative_humidity_2m",
+    "wind_speed_10m",
+    "pressure_msl",
+    "hour",
+    "day_of_week",
+    "month"
+  ],
+  "horizons": [
+    24,
+    48,
+    72
+  ],
+  "test_size": 0.2,
+  "random_state": 42
+}

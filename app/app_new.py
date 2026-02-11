@@ -590,10 +590,6 @@ def main():
                 st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
                 st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
         
-        # ========================================
-        # FOOTER
-        # ========================================
-        
         st.markdown("---")
         
         footer_col1, footer_col2 = st.columns(2)

@@ -1,14 +1,37 @@
-hopsworks[python]==4.2.*
-pandas
-numpy
+# hopsworks[python]==4.2.*
+# pandas
+# numpy
+# requests
+# python-dotenv
+# scikit-learn
+# xgboost
+# joblib
+# shap
+# matplotlib
+# lightgbm>=4.0
+# catboost>=1.2
+# streamlit>=1.31
+# plotly>=5.18
+
+numpy==1.26.4
+pandas==2.1.4
 requests
 python-dotenv
-scikit-learn
-xgboost
+
+# ML
+scikit-learn==1.4.2
+xgboost==2.0.3
+lightgbm==4.3.0
+catboost==1.2.5
 joblib
-shap
-matplotlib
-lightgbm>=4.0
-catboost>=1.2
-streamlit>=1.31
-plotly>=5.18
+
+# Explainability
+shap==0.44.1
+
+# Visualization
+matplotlib==3.8.4
+plotly==5.19.0
+
+# Platform
+streamlit==1.31.1
+hopsworks==4.6.4

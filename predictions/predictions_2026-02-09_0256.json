@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-02-09_0256",
+  "predictions": {
+    "24": {
+      "horizon_hours": 24,
+      "predicted_pm25": 78.92954070449251,
+      "prediction_time": "2026-02-09T20:00:00+00:00",
+      "model_used": "aqi_predictor_t24h",
+      "current_pm25": 92.4000015258789
+    },
+    "48": {
+      "horizon_hours": 48,
+      "predicted_pm25": 116.80901256768838,
+      "prediction_time": "2026-02-10T20:00:00+00:00",
+      "model_used": "aqi_predictor_t48h",
+      "current_pm25": 92.4000015258789
+    },
+    "72": {
+      "horizon_hours": 72,
+      "predicted_pm25": 95.16975007834357,
+      "prediction_time": "2026-02-11T20:00:00+00:00",
+      "model_used": "aqi_predictor_t72h",
+      "current_pm25": 92.4000015258789
+    }
+  }
+}

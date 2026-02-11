@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-01-19_0239",
+  "predictions": {
+    "24": {
+      "horizon_hours": 24,
+      "predicted_pm25": 71.90858459472656,
+      "prediction_time": "2026-01-16T23:00:00+00:00",
+      "model_used": "xgboost",
+      "current_pm25": 144.39999389648438
+    },
+    "48": {
+      "horizon_hours": 48,
+      "predicted_pm25": 86.09059561140322,
+      "prediction_time": "2026-01-17T23:00:00+00:00",
+      "model_used": "gbr",
+      "current_pm25": 144.39999389648438
+    },
+    "72": {
+      "horizon_hours": 72,
+      "predicted_pm25": 127.20860864174787,
+      "prediction_time": "2026-01-18T23:00:00+00:00",
+      "model_used": "rf",
+      "current_pm25": 144.39999389648438
+    }
+  }
+}

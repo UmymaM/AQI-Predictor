@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-02-04_0155",
+  "predictions": {
+    "24": {
+      "horizon_hours": 24,
+      "predicted_pm25": 127.37234013199186,
+      "prediction_time": "2026-02-04T20:00:00+00:00",
+      "model_used": "gbr",
+      "current_pm25": 84.5
+    },
+    "48": {
+      "horizon_hours": 48,
+      "predicted_pm25": 91.12639938383717,
+      "prediction_time": "2026-02-05T20:00:00+00:00",
+      "model_used": "rf",
+      "current_pm25": 84.5
+    },
+    "72": {
+      "horizon_hours": 72,
+      "predicted_pm25": 144.40916791291406,
+      "prediction_time": "2026-02-06T20:00:00+00:00",
+      "model_used": "rf",
+      "current_pm25": 84.5
+    }
+  }
+}

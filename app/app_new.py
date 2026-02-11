@@ -377,8 +377,9 @@ def load_model():
     """
     Load the AQI model and feature names from local directory.
     """
-    model_path = "models/latest/aqi_model.pkl"
-    features_path = "models/latest/features.json"
+    
+    model_path = "models/2026-02-09_1933/unified_model.pkl"
+    features_path = "models/2026-02-09_1933/features.json"
     
     # Load model
     model_obj = joblib.load(model_path)

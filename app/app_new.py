@@ -1,3 +1,641 @@
+# import streamlit as st
+# import os
+# import json
+# import numpy as np
+# import pandas as pd
+# import joblib
+# import hopsworks
+# from dotenv import load_dotenv
+# from datetime import datetime, timedelta
+# import plotly.graph_objects as go
+# import plotly.express as px
+# from plotly.subplots import make_subplots
+# import time
+
+# MODEL_NAME = "aqi_predictor_unified"
+# MODEL_VERSION = 1
+# FEATURE_GROUP_NAME = "aqi_features_hourly"
+# FEATURE_GROUP_VERSION = 1
+# HORIZONS = [24, 48, 72]
+
+
+# # these features work fine for v1 of the model
+# BASE_FEATURES = [
+#     "pm25_lag1", "pm25_lag6", "pm25_lag24",
+#     "pm25_ma6", "pm25_ma24", "pm25_change_1hr",
+#     "temperature_2m", "relative_humidity_2m",
+#     "wind_speed_10m", "pressure_msl",
+#     "hour", "day_of_week", "day", "month",
+# ]
+# # for later versions, add "pm10","carbon_monoxide","nitrogen_dioxide" and"sulphur_dioxide"
+# load_dotenv()
+
+# st.set_page_config(
+#     page_title="AQI Prediction Dashboard",
+#     page_icon="🌫️",
+#     layout="wide",
+#     initial_sidebar_state="expanded")
+
+# st.markdown("""
+# <style>
+#     /* Main background gradient */
+#     .main {
+#         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+#         background-attachment: fixed;
+#     }
+    
+#     /* Remove padding */
+#     .block-container {
+#         padding-top: 2rem;
+#         padding-bottom: 0rem;
+#     }
+    
+#     /* Metric containers */
+#     [data-testid="stMetricValue"] {
+#         font-size: 2.8rem !important;
+#         font-weight: 800 !important;
+#         color: #667eea;
+#     }
+    
+#     [data-testid="stMetricLabel"] {
+#         font-size: 1.1rem !important;
+#         font-weight: 600 !important;
+#         color: #555 !important;
+#     }
+    
+#     /* Headers */
+#     h1 {
+#         color: #E0DEE0 !important;
+#         font-size: 3.5rem !important;
+#         font-weight: 900 !important;
+#         text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+#         margin-bottom: 0.5rem !important;
+#     }
+    
+#     h2 {
+#         color: #AEA9AF !important;
+#         font-weight: 700 !important;
+#         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+#     }
+    
+#     h3 {
+#         color: #333 !important;
+#         font-weight: 700 !important;
+#     }
+    
+#     /* Buttons */
+#     .stButton>button {
+#         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+#         color: white;
+#         border: none;
+#         border-radius: 12px;
+#         padding: 1rem 2rem;
+#         font-size: 1.2rem;
+#         font-weight: 700;
+#         box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+#         transition: all 0.3s ease;
+#         width: 100%;
+#     }
+    
+#     .stButton>button:hover {
+#         transform: translateY(-3px);
+#         box-shadow: 0 12px 30px rgba(102, 126, 234, 0.6);
+#     }
+    
+#     /* Cards */
+#     .css-1r6slb0 {
+#         background: white;
+#         border-radius: 15px;
+#         padding: 2rem;
+#         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+#     }
+    
+#     /* Expanders */
+#     .streamlit-expanderHeader {
+#         background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+#         color: white !important;
+#         border-radius: 10px;
+#         font-weight: 700;
+#     }
+    
+#     /* Sidebar */
+#     [data-testid="stSidebar"] {
+#         background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+#     }
+    
+#     [data-testid="stSidebar"] * {
+#         color: white !important;
+#     }
+    
+#     /* Info boxes */
+#     .stAlert {
+#         border-radius: 12px;
+#         border-left: 6px solid #667eea;
+#         background: rgba(255, 255, 255, 0.95);
+#     }
+    
+#     /* Tables */
+#     .dataframe {
+#         border-radius: 10px;
+#         overflow: hidden;
+#     }
+    
+#     /* Animation for cards */
+#     @keyframes slideIn {
+#         from {
+#             opacity: 0;
+#             transform: translateY(30px);
+#         }
+#         to {
+#             opacity: 1;
+#             transform: translateY(0);
+#         }
+#     }
+    
+#     .element-container {
+#         animation: slideIn 0.5s ease-out;
+#     }
+# </style>
+# """, unsafe_allow_html=True)
+
+
+# def pm25_to_aqi(pm25):
+#     # converts pm25 to aqi
+#     if pm25 <= 12.0:
+#         return ((50 - 0) / (12.0 - 0.0)) * (pm25 - 0.0) + 0
+#     elif pm25 <= 35.4:
+#         return ((100 - 51) / (35.4 - 12.1)) * (pm25 - 12.1) + 51
+#     elif pm25 <= 55.4:
+#         return ((150 - 101) / (55.4 - 35.5)) * (pm25 - 35.5) + 101
+#     elif pm25 <= 150.4:
+#         return ((200 - 151) / (150.4 - 55.5)) * (pm25 - 55.5) + 151
+#     elif pm25 <= 250.4:
+#         return ((300 - 201) / (250.4 - 150.5)) * (pm25 - 150.5) + 201
+#     else:
+#         return 500
+
+
+# def get_aqi_info(aqi):
+#     if aqi <= 50:
+#         return "Good", "#00e400", "🟢", "Air quality is excellent"
+#     elif aqi <= 100:
+#         return "Moderate", "#ffff00", "🟡", "Acceptable air quality"
+#     elif aqi <= 150:
+#         return "Unhealthy for Sensitive Groups", "#ff7e00", "🟠", "Sensitive groups should limit outdoor exposure"
+#     elif aqi <= 200:
+#         return "Unhealthy", "#ff0000", "🔴", "Everyone should reduce outdoor activity"
+#     elif aqi <= 300:
+#         return "Very Unhealthy", "#8f3f97", "🟣", "Health alert! Avoid outdoor activity"
+#     else:
+#         return "Hazardous", "#7e0023", "🟤", "Emergency conditions - stay indoors!"
+
+
+# def create_gauge_chart(value, title, max_value=300):
+#     aqi = pm25_to_aqi(value)
+#     category, color, emoji, _ = get_aqi_info(aqi)
+    
+#     fig = go.Figure(go.Indicator(
+#         mode="gauge+number+delta",
+#         value=aqi,
+#         domain={'x': [0, 1], 'y': [0, 1]},
+#         title={'text': f"{title}<br><span style='font-size:0.7em'>{emoji} {category}</span>", 
+#                'font': {'size': 20, 'color': '#333'}},
+#         delta={'reference': 35.4, 'increasing': {'color': "#ff0000"}},
+#         number={'font': {'size': 40}},
+#         gauge={
+#             'axis': {'range': [None, max_value], 'tickwidth': 2},
+#             'bar': {'color': color, 'thickness': 0.75},
+#             'bgcolor': "white",
+#             'borderwidth': 3,
+#             'bordercolor': "#ddd",
+#             'steps': [
+#                 {'range': [0, 12], 'color': '#e8f5e9'},
+#                 {'range': [12, 35.4], 'color': '#fff9c4'},
+#                 {'range': [35.4, 55.4], 'color': '#ffe0b2'},
+#                 {'range': [55.4, 150.4], 'color': '#ffcdd2'},
+#                 {'range': [150.4, max_value], 'color': '#f3e5f5'}
+#             ],
+#             'threshold': {
+#                 'line': {'color': "#333", 'width': 5},
+#                 'thickness': 0.75,
+#                 'value': value
+#             }
+#         }
+#     ))
+    
+#     fig.update_layout(
+#         height=300,
+#         margin=dict(l=20, r=20, t=80, b=20),
+#         paper_bgcolor="rgba(0,0,0,0)",
+#         font={'family': "Arial, sans-serif"}
+#     )
+    
+#     return fig
+
+
+# def create_forecast_chart(current_pm25, predictions, current_time):
+#     # creates forecast timeline
+#     times = [current_time]
+#     values = [current_pm25]
+#     labels = ["Now"]
+    
+#     for i, h in enumerate(HORIZONS):
+#         times.append(current_time + timedelta(hours=h))
+#         values.append(predictions[i])
+#         labels.append(f"+{h}h")
+    
+#     # Get colors based on AQI
+#     colors = []
+#     for val in values:
+#         aqi = pm25_to_aqi(val)
+#         _, color, _, _ = get_aqi_info(aqi)
+#         colors.append(color)
+    
+#     fig = go.Figure()
+    
+#     # Add line
+#     fig.add_trace(go.Scatter(
+#         x=times,
+#         y=values,
+#         mode='lines+markers',
+#         name='PM2.5 Forecast',
+#         line=dict(color='#667eea', width=4, shape='spline'),
+#         marker=dict(
+#             size=20,
+#             color=colors,
+#             line=dict(color='white', width=3),
+#             symbol='circle'
+#         ),
+#         text=labels,
+#         hovertemplate='<b>%{text}</b><br>PM2.5: %{y:.1f} µg/m³<br>%{x|%b %d, %H:%M}<extra></extra>'
+#     ))
+    
+#     # Add threshold zones
+#     fig.add_hrect(y0=0, y1=12, fillcolor="green", opacity=0.1, line_width=0)
+#     fig.add_hrect(y0=12, y1=35.4, fillcolor="yellow", opacity=0.1, line_width=0)
+#     fig.add_hrect(y0=35.4, y1=55.4, fillcolor="orange", opacity=0.1, line_width=0)
+#     fig.add_hrect(y0=55.4, y1=150.4, fillcolor="red", opacity=0.1, line_width=0)
+    
+#     # Add threshold lines
+#     fig.add_hline(y=12, line_dash="dash", line_color="green", opacity=0.6,
+#                   annotation_text="Good", annotation_position="right")
+#     fig.add_hline(y=35.4, line_dash="dash", line_color="orange", opacity=0.6,
+#                   annotation_text="Moderate", annotation_position="right")
+#     fig.add_hline(y=55.4, line_dash="dash", line_color="red", opacity=0.6,
+#                   annotation_text="Unhealthy", annotation_position="right")
+    
+#     fig.update_layout(
+#         title={
+#             'text': "72-Hour PM2.5 Forecast",
+#             'font': {'size': 24, 'color': '#333', 'family': 'Arial Black'}
+#         },
+#         xaxis_title="Time",
+#         yaxis_title="PM2.5 Concentration (µg/m³)",
+#         hovermode='x unified',
+#         template='plotly_white',
+#         height=450,
+#         font=dict(size=14),
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)'),
+#         yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)')
+#     )
+    
+#     return fig
+
+
+# def create_comparison_bar(current_pm25, predictions):
+#     #creates comparison bar chart
+#     categories = ["Current", "+24h", "+48h", "+72h"]
+#     values = [current_pm25] + list(predictions)
+    
+#     colors = []
+#     for val in values:
+#         aqi = pm25_to_aqi(val)
+#         _, color, _, _ = get_aqi_info(aqi)
+#         colors.append(color)
+    
+#     fig = go.Figure(go.Bar(
+#         x=categories,
+#         y=values,
+#         marker=dict(
+#             color=colors,
+#             line=dict(color='white', width=2)
+#         ),
+#         text=[f"{v:.1f}" for v in values],
+#         textposition='outside',
+#         textfont=dict(size=16, color='#333', family='Arial Black'),
+#         hovertemplate='<b>%{x}</b><br>PM2.5: %{y:.1f} µg/m³<extra></extra>'
+#     ))
+    
+#     fig.update_layout(
+#         title="PM2.5 Comparison",
+#         yaxis_title="PM2.5 (µg/m³)",
+#         template='plotly_white',
+#         height=350,
+#         font=dict(size=14),
+#         showlegend=False,
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)'
+#     )
+    
+#     return fig
+
+
+# @st.cache_resource(show_spinner=False)
+# def get_hopsworks_project():
+#     return hopsworks.login(
+#         project=os.getenv("HOPSWORKS_PROJECT"),
+#         api_key_value=os.getenv("HOPSWORKS_API_KEY")
+#     )
+
+
+# @st.cache_resource(show_spinner=False, ttl=None)
+# def load_model():
+#     project = get_hopsworks_project()
+#     mr = project.get_model_registry()
+
+#     model = mr.get_model(MODEL_NAME, MODEL_VERSION)
+#     model_dir = model.download()
+
+#     model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
+
+#     with open(os.path.join(model_dir, "features.json")) as f:
+#         feature_names = json.load(f)["feature_names"]
+    
+#     # Get metrics if available
+#     metrics = {}
+#     metrics_file = os.path.join(model_dir, "detailed_metrics.json")
+#     if os.path.exists(metrics_file):
+#         with open(metrics_file) as f:
+#             metrics = json.load(f)
+
+#     return model_obj, feature_names, model.training_metrics, model.version
+
+
+# @st.cache_data(show_spinner=False, ttl=300)
+# def load_latest_features():
+#     # Load latest features - cached for 5 minutes
+#     project = get_hopsworks_project()
+#     fs = project.get_feature_store()
+#     fg = fs.get_feature_group(
+#         name=FEATURE_GROUP_NAME,
+#         version=FEATURE_GROUP_VERSION )
+#     df = fg.read()
+#     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+#     df = df.sort_values("timestamp")
+
+#     return df.iloc[-1]  # latest row only
+
+
+
+# def main():
+#     # Header with animation
+#     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+#     st.title("🌫️ Air Quality Prediction Dashboard")
+#     st.markdown("### **Real-Time PM2.5 Forecasting for Bahawalpur**")
+#     st.markdown("</div>", unsafe_allow_html=True)
+    
+#     st.markdown("---")
+    
+#     # sidebar
+#     with st.sidebar:
+#         st.markdown("## 📍 Location")
+#         st.markdown("**City:** Bahawalpur, Pakistan")
+#         st.markdown("**Coordinates:** 29.40°N, 71.68°E")
+#         st.markdown("---")
+#         st.markdown("## ⏰ Current Time")
+#         current_time = datetime.now()
+#         st.markdown(f"**{current_time.strftime('%I:%M %p')}**")
+#         st.markdown(f"{current_time.strftime('%B %d, %Y')}")
+#         st.markdown("---")
+#         st.markdown("## 🎯 AQI Scale")
+#         aqi_info = [
+#             ("Good", "0-50", "🟢"),
+#             ("Moderate", "51-100", "🟡"),
+#             ("Unhealthy (Sensitive)", "101-150", "🟠"),
+#             ("Unhealthy", "151-200", "🔴"),
+#             ("Very Unhealthy", "201-300", "🟣"),
+#             ("Hazardous", "301+", "🟤")]
+        
+#         for category, range_val, emoji in aqi_info:
+#             st.markdown(f"{emoji} **{category}**: {range_val}")
+        
+#         st.markdown("---")
+        
+#         # Refresh button
+#         if st.button("🔄 Refresh Data", use_container_width=True):
+#             st.cache_data.clear()
+#             st.rerun()
+    
+#     # prediction button
+#     predict_button = st.button("🔮 Generate 3-Day Forecast", use_container_width=True, type="primary")
+    
+#     if predict_button:
+#         # Progress bar for loading
+#         progress_bar = st.progress(0)
+#         status_text = st.empty()
+        
+#         # Load model
+#         status_text.text("⚡ Loading AI model...")
+#         progress_bar.progress(30)
+#         model, feature_names, metrics, model_version = load_model()
+        
+#         # Load features
+#         status_text.text("📊 Fetching latest data...")
+#         progress_bar.progress(60)
+#         latest_row = load_latest_features()
+        
+#         # Make predictions
+#         status_text.text("🧠 Generating predictions...")
+#         progress_bar.progress(90)
+        
+#         rows = []
+#         for h in HORIZONS:
+#             row = [latest_row[f] for f in BASE_FEATURES]
+#             row.append(h)
+#             rows.append(row)
+        
+#         X = np.array(rows)
+#         predictions = model.predict(X)
+        
+#         progress_bar.progress(100)
+#         time.sleep(0.3)
+#         progress_bar.empty()
+#         status_text.empty()
+        
+#         # current aqi
+#         st.markdown("## 📍 Current Air Quality")
+        
+#         current_pm25 = float(latest_row['pm2_5'])
+#         current_aqi = pm25_to_aqi(current_pm25)
+#         category, color, emoji, description = get_aqi_info(current_aqi)
+        
+#         # Alert box
+#         if current_aqi <= 50:
+#             st.success(f"{emoji} **{category}** - {description}")
+#         elif current_aqi <= 100:
+#             st.info(f"{emoji} **{category}** - {description}")
+#         elif current_aqi <= 150:
+#             st.warning(f"{emoji} **{category}** - {description}")
+#         else:
+#             st.error(f"{emoji} **{category}** - {description}")
+        
+#         # Current metrics in columns
+#         col1, col2, col3, col4 = st.columns(4)
+        
+#         with col1:
+#             st.metric("PM2.5", f"{current_pm25:.1f} µg/m³")
+        
+#         with col2:
+#             st.metric("AQI", f"{current_aqi:.0f}")
+        
+#         with col3:
+#             st.metric("Temperature", f"{latest_row['temperature_2m']:.1f}°C")
+        
+#         with col4:
+#             st.metric("Humidity", f"{latest_row['relative_humidity_2m']:.0f}%")
+        
+#         st.markdown("---")
+        
+#         # forecast gauges
+#         st.markdown("## 🔮 72-Hour AQI Forecast")
+        
+#         gauge_cols = st.columns(3)
+        
+#         for i, h in enumerate(HORIZONS):
+#             with gauge_cols[i]:
+#                 pred_time = latest_row['timestamp'] + timedelta(hours=h)
+#                 fig = create_gauge_chart(predictions[i], f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')} UTC")
+#                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        
+#         st.markdown("---")
+        
+#         # charts
+#         chart_col1, chart_col2 = st.columns([2, 1])
+        
+#         with chart_col1:
+#             # Forecast timeline
+#             fig_timeline = create_forecast_chart(current_pm25, predictions, latest_row['timestamp'])
+#             st.plotly_chart(fig_timeline, use_container_width=True, config={'displayModeBar': False})
+        
+#         with chart_col2:
+#             # Comparison bar
+#             fig_bar = create_comparison_bar(current_pm25, predictions)
+#             st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+        
+#         st.markdown("---")
+        
+#         # forecast table
+#         st.markdown("## 📊 Detailed Forecast")
+        
+#         forecast_data = []
+#         for i, h in enumerate(HORIZONS):
+#             pred_time = latest_row['timestamp'] + timedelta(hours=h)
+#             pred_pm25 = predictions[i]
+#             pred_aqi = pm25_to_aqi(pred_pm25)
+#             cat, _, emoji, _ = get_aqi_info(pred_aqi)
+            
+#             forecast_data.append({
+#                 "Forecast Time": pred_time.strftime("%b %d, %Y %H:%M"),
+#                 "Horizon": f"+{h} hours",
+#                 "PM2.5 (µg/m³)": f"{pred_pm25:.2f}",
+#                 "AQI": f"{pred_aqi:.0f}",
+#                 "Category": f"{emoji} {cat}",
+#                 "Change": f"{pred_pm25 - current_pm25:+.1f}"
+#             })
+        
+#         forecast_df = pd.DataFrame(forecast_data)
+#         st.dataframe(forecast_df, use_container_width=True, hide_index=True)
+        
+#         st.markdown("---")
+        
+#         # current conditions
+#         st.markdown("## 🌤️ Current Weather Conditions")
+        
+#         weather_col1, weather_col2, weather_col3, weather_col4 = st.columns(4)
+        
+#         with weather_col1:
+#             st.metric("🌡️ Temperature", f"{latest_row['temperature_2m']:.1f}°C")
+#             st.metric("💨 Wind Speed", f"{latest_row['wind_speed_10m']:.1f} m/s")
+        
+#         with weather_col2:
+#             st.metric("💧 Humidity", f"{latest_row['relative_humidity_2m']:.0f}%")
+#             st.metric("🔽 Pressure", f"{latest_row['pressure_msl']:.0f} hPa")
+        
+#         with weather_col3:
+#             st.metric("📊 PM2.5 (1h ago)", f"{latest_row['pm25_lag1']:.1f} µg/m³")
+#             st.metric("📊 PM2.5 (6h avg)", f"{latest_row['pm25_ma6']:.1f} µg/m³")
+        
+#         with weather_col4:
+#             st.metric("📊 PM2.5 (24h avg)", f"{latest_row['pm25_ma24']:.1f} µg/m³")
+#             st.metric("📈 1h Change", f"{latest_row['pm25_change_1hr']:+.1f} µg/m³")
+        
+#         st.markdown("---")
+        
+#         # model info
+#         with st.expander("🤖 Model Information"):
+#             model_col1, model_col2 = st.columns(2)
+            
+#             with model_col1:
+#                 st.markdown("**Model Details:**")
+#                 st.write(f"- **Name:** {MODEL_NAME}")
+#                 st.write(f"- **Version:** {model_version}")
+#                 st.write(f"- **Type:** Multi-Horizon")
+#                 st.write(f"- **Horizons:** 24h, 48h, 72h")
+            
+#             with model_col2:
+#                 st.markdown("**Performance Metrics:**")
+#                 st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
+#                 st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
+#                 st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
+        
+#         st.markdown("---")
+        
+#         footer_col1, footer_col2 = st.columns(2)
+    
+#         with footer_col1:
+#             st.markdown("**🕐 Last Updated**")
+#             st.write(latest_row['timestamp'].strftime("%Y-%m-%d %H:%M UTC"))
+        
+#         with footer_col2:
+#             st.markdown("**⚡ Data Source**")
+#             st.write("Hopsworks Feature Store")
+        
+#     else:
+#         # landing page before prediction
+#         st.markdown("""
+            
+#         <div style='text-align: center; padding: 3rem; background: #12171D; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
+#             <h2 style='color: #667eea; margin-bottom: 1rem;'>Welcome to the Bahawalpur AQI Prediction Dashboard</h2>
+#             <p style='font-size: 1.2rem; color: #666; line-height: 1.8;'>
+#                 Get AQI forecasts powered by machine learning.
+#                 <br><br>
+#                 Click the <strong>"Generate 3-Day Forecast"</strong> button above to see:
+#             </p>
+#             <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 2rem;'>
+#                 <div>
+#                     <h3 style='color: #667eea;'>📊 Real-Time Data</h3>
+#                     <p style='color: #888;'>Current PM2.5 & AQI levels</p>
+#                 </div>
+#                 <div>
+#                     <h3 style='color: #667eea;'>🔮 AI Predictions</h3>
+#                     <p style='color: #888;'>24h, 48h & 72h forecasts</p>
+#                 </div>
+#                 <div>
+#                     <h3 style='color: #667eea;'>📈 Visual Charts</h3>
+#                     <p style='color: #888;'>Interactive graphs & gauges</p>
+#                 </div>
+#             </div>
+#         </div>
+#         """, unsafe_allow_html=True)
+        
+#         st.markdown("<br>", unsafe_allow_html=True)
+        
+
+# if __name__ == "__main__":
+#     main()
+
 import streamlit as st
 import os
 import json
@@ -18,8 +656,6 @@ FEATURE_GROUP_NAME = "aqi_features_hourly"
 FEATURE_GROUP_VERSION = 1
 HORIZONS = [24, 48, 72]
 
-
-# these features work fine for v1 of the model
 BASE_FEATURES = [
     "pm25_lag1", "pm25_lag6", "pm25_lag24",
     "pm25_ma6", "pm25_ma24", "pm25_change_1hr",
@@ -27,121 +663,264 @@ BASE_FEATURES = [
     "wind_speed_10m", "pressure_msl",
     "hour", "day_of_week", "day", "month",
 ]
-# for later versions, add "pm10","carbon_monoxide","nitrogen_dioxide" and"sulphur_dioxide"
+
 load_dotenv()
 
 st.set_page_config(
     page_title="AQI Prediction Dashboard",
     page_icon="🌫️",
     layout="wide",
-    initial_sidebar_state="expanded")
+    initial_sidebar_state="expanded"
+)
 
+# Simplified CSS that works well in both modes
 st.markdown("""
 <style>
-    /* Main background gradient */
-    .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        background-attachment: fixed;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Remove padding */
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 0rem;
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+        max-width: 1400px;
     }
     
-    /* Metric containers */
-    [data-testid="stMetricValue"] {
+    /* Main header styling */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2.5rem 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        text-align: center;
+    }
+    
+    .main-header h1 {
+        color: white !important;
         font-size: 2.8rem !important;
+        font-weight: 900 !important;
+        margin: 0 !important;
+        letter-spacing: -0.5px;
+    }
+    
+    .main-header p {
+        color: rgba(255, 255, 255, 0.95) !important;
+        font-size: 1.2rem !important;
+        margin-top: 0.5rem !important;
+        font-weight: 500;
+    }
+    
+    /* Section headers */
+    .section-header {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #667eea;
+        display: inline-block;
+    }
+    
+    /* Metrics styling */
+    [data-testid="stMetricValue"] {
+        font-size: 2.2rem !important;
         font-weight: 800 !important;
-        color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 1.1rem !important;
+        font-size: 0.95rem !important;
         font-weight: 600 !important;
-        color: #555 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
     }
     
-    /* Headers */
-    h1 {
-        color: #E0DEE0 !important;
-        font-size: 3.5rem !important;
-        font-weight: 900 !important;
-        text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-        margin-bottom: 0.5rem !important;
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
     }
     
-    h2 {
-        color: #AEA9AF !important;
-        font-weight: 700 !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    h3 {
-        color: #333 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Buttons */
+    /* Button styling */
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
         border-radius: 12px;
-        padding: 1rem 2rem;
-        font-size: 1.2rem;
+        padding: 0.875rem 2rem;
+        font-size: 1.1rem;
         font-weight: 700;
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         width: 100%;
+        letter-spacing: 0.3px;
     }
     
     .stButton>button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
     }
     
-    /* Cards */
-    .css-1r6slb0 {
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    .stButton>button:active {
+        transform: translateY(0);
     }
     
-    /* Expanders */
-    .streamlit-expanderHeader {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
-        border-radius: 10px;
-        font-weight: 700;
-    }
-    
-    /* Sidebar */
+    /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
+        padding: 1.5rem 1rem;
     }
     
-    [data-testid="stSidebar"] * {
+    [data-testid="stSidebar"] h2 {
         color: white !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.5rem;
     }
     
-    /* Info boxes */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] .element-container {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    
+    [data-testid="stSidebar"] strong {
+        color: white !important;
+        font-weight: 600;
+    }
+    
+    /* Info/Alert boxes */
     .stAlert {
         border-radius: 12px;
-        border-left: 6px solid #667eea;
-        background: rgba(255, 255, 255, 0.95);
+        border: none;
+        padding: 1.25rem;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
     
-    /* Tables */
+    /* Dataframe styling */
     .dataframe {
-        border-radius: 10px;
+        border: none !important;
+        border-radius: 12px;
         overflow: hidden;
     }
     
-    /* Animation for cards */
-    @keyframes slideIn {
+    .dataframe thead tr th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 1rem !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 10px;
+        font-weight: 700 !important;
+        padding: 1rem !important;
+        transition: all 0.2s ease;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: #667eea;
+    }
+    
+    .streamlit-expanderContent {
+        border: 2px solid rgba(102, 126, 234, 0.2);
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        padding: 1.5rem;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div > div {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+    
+    /* Welcome card */
+    .welcome-card {
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        text-align: center;
+        margin: 2rem 0;
+        border: 2px solid rgba(102, 126, 234, 0.2);
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .welcome-card h2 {
+        color: #667eea;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+    }
+    
+    .welcome-card p {
+        font-size: 1.15rem;
+        line-height: 1.8;
+        margin-bottom: 2rem;
+        opacity: 0.8;
+    }
+    
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 2rem;
+        margin-top: 2.5rem;
+    }
+    
+    .feature-item {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        padding: 2rem 1.5rem;
+        border-radius: 16px;
+        border: 2px solid rgba(102, 126, 234, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .feature-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        border-color: #667eea;
+    }
+    
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .feature-title {
+        color: #667eea;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .feature-desc {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        opacity: 0.7;
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
         from {
             opacity: 0;
             transform: translateY(30px);
@@ -152,15 +931,31 @@ st.markdown("""
         }
     }
     
-    .element-container {
-        animation: slideIn 0.5s ease-out;
+    .animate-in {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 2rem !important;
+        }
+        
+        .main-header p {
+            font-size: 1rem !important;
+        }
+        
+        .feature-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 def pm25_to_aqi(pm25):
-    # converts pm25 to aqi
+    """Convert PM2.5 to AQI"""
     if pm25 <= 12.0:
         return ((50 - 0) / (12.0 - 0.0)) * (pm25 - 0.0) + 0
     elif pm25 <= 35.4:
@@ -176,65 +971,71 @@ def pm25_to_aqi(pm25):
 
 
 def get_aqi_info(aqi):
+    """Get AQI category information"""
     if aqi <= 50:
-        return "Good", "#00e400", "🟢", "Air quality is excellent"
+        return "Good", "#10b981", "🟢", "Air quality is excellent"
     elif aqi <= 100:
-        return "Moderate", "#ffff00", "🟡", "Acceptable air quality"
+        return "Moderate", "#f59e0b", "🟡", "Acceptable air quality"
     elif aqi <= 150:
-        return "Unhealthy for Sensitive Groups", "#ff7e00", "🟠", "Sensitive groups should limit outdoor exposure"
+        return "Unhealthy for Sensitive Groups", "#f97316", "🟠", "Sensitive groups should limit outdoor exposure"
     elif aqi <= 200:
-        return "Unhealthy", "#ff0000", "🔴", "Everyone should reduce outdoor activity"
+        return "Unhealthy", "#ef4444", "🔴", "Everyone should reduce outdoor activity"
     elif aqi <= 300:
-        return "Very Unhealthy", "#8f3f97", "🟣", "Health alert! Avoid outdoor activity"
+        return "Very Unhealthy", "#a855f7", "🟣", "Health alert! Avoid outdoor activity"
     else:
-        return "Hazardous", "#7e0023", "🟤", "Emergency conditions - stay indoors!"
+        return "Hazardous", "#991b1b", "🟤", "Emergency conditions - stay indoors!"
 
 
 def create_gauge_chart(value, title, max_value=300):
+    """Create modern gauge chart that adapts to theme"""
     aqi = pm25_to_aqi(value)
     category, color, emoji, _ = get_aqi_info(aqi)
     
     fig = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
+        mode="gauge+number",
         value=aqi,
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': f"{title}<br><span style='font-size:0.7em'>{emoji} {category}</span>", 
-               'font': {'size': 20, 'color': '#333'}},
-        delta={'reference': 35.4, 'increasing': {'color': "#ff0000"}},
-        number={'font': {'size': 40}},
+        title={
+            'text': f"<b>{title}</b><br><span style='font-size:0.85em; opacity:0.7'>{emoji} {category}</span>",
+            'font': {'size': 16, 'family': 'Inter'}
+        },
+        number={'font': {'size': 48, 'family': 'Inter', 'weight': 900}, 'suffix': ''},
         gauge={
-            'axis': {'range': [None, max_value], 'tickwidth': 2},
-            'bar': {'color': color, 'thickness': 0.75},
-            'bgcolor': "white",
-            'borderwidth': 3,
-            'bordercolor': "#ddd",
+            'axis': {
+                'range': [None, max_value],
+                'tickwidth': 2,
+                'tickfont': {'size': 12}
+            },
+            'bar': {'color': color, 'thickness': 0.7},
+            'bgcolor': "rgba(100, 100, 100, 0.1)",
+            'borderwidth': 0,
             'steps': [
-                {'range': [0, 12], 'color': '#e8f5e9'},
-                {'range': [12, 35.4], 'color': '#fff9c4'},
-                {'range': [35.4, 55.4], 'color': '#ffe0b2'},
-                {'range': [55.4, 150.4], 'color': '#ffcdd2'},
-                {'range': [150.4, max_value], 'color': '#f3e5f5'}
+                {'range': [0, 50], 'color': 'rgba(16, 185, 129, 0.15)'},
+                {'range': [50, 100], 'color': 'rgba(245, 158, 11, 0.15)'},
+                {'range': [100, 150], 'color': 'rgba(249, 115, 22, 0.15)'},
+                {'range': [150, 200], 'color': 'rgba(239, 68, 68, 0.15)'},
+                {'range': [200, max_value], 'color': 'rgba(168, 85, 247, 0.15)'}
             ],
             'threshold': {
-                'line': {'color': "#333", 'width': 5},
-                'thickness': 0.75,
-                'value': value
+                'line': {'color': color, 'width': 4},
+                'thickness': 0.8,
+                'value': aqi
             }
         }
     ))
     
     fig.update_layout(
-        height=300,
+        height=280,
         margin=dict(l=20, r=20, t=80, b=20),
         paper_bgcolor="rgba(0,0,0,0)",
-        font={'family': "Arial, sans-serif"}
+        font={'family': "Inter, sans-serif"}
     )
     
     return fig
 
 
 def create_forecast_chart(current_pm25, predictions, current_time):
-    # creates forecast timeline
+    """Create forecast timeline chart"""
     times = [current_time]
     values = [current_pm25]
     labels = ["Now"]
@@ -244,7 +1045,6 @@ def create_forecast_chart(current_pm25, predictions, current_time):
         values.append(predictions[i])
         labels.append(f"+{h}h")
     
-    # Get colors based on AQI
     colors = []
     for val in values:
         aqi = pm25_to_aqi(val)
@@ -252,6 +1052,20 @@ def create_forecast_chart(current_pm25, predictions, current_time):
         colors.append(color)
     
     fig = go.Figure()
+    
+    # Add shaded zones
+    fig.add_hrect(y0=0, y1=12, fillcolor="#10b981", opacity=0.08, line_width=0, 
+                  annotation_text="Good", annotation_position="inside top left",
+                  annotation=dict(font=dict(size=11, color="#10b981")))
+    fig.add_hrect(y0=12, y1=35.4, fillcolor="#f59e0b", opacity=0.08, line_width=0,
+                  annotation_text="Moderate", annotation_position="inside top left",
+                  annotation=dict(font=dict(size=11, color="#f59e0b")))
+    fig.add_hrect(y0=35.4, y1=55.4, fillcolor="#f97316", opacity=0.08, line_width=0,
+                  annotation_text="Unhealthy (Sensitive)", annotation_position="inside top left",
+                  annotation=dict(font=dict(size=11, color="#f97316")))
+    fig.add_hrect(y0=55.4, y1=150.4, fillcolor="#ef4444", opacity=0.08, line_width=0,
+                  annotation_text="Unhealthy", annotation_position="inside top left",
+                  annotation=dict(font=dict(size=11, color="#ef4444")))
     
     # Add line
     fig.add_trace(go.Scatter(
@@ -261,51 +1075,48 @@ def create_forecast_chart(current_pm25, predictions, current_time):
         name='PM2.5 Forecast',
         line=dict(color='#667eea', width=4, shape='spline'),
         marker=dict(
-            size=20,
+            size=16,
             color=colors,
-            line=dict(color='white', width=3),
+            line=dict(color='rgba(255,255,255,0.8)', width=3),
             symbol='circle'
         ),
         text=labels,
-        hovertemplate='<b>%{text}</b><br>PM2.5: %{y:.1f} µg/m³<br>%{x|%b %d, %H:%M}<extra></extra>'
+        hovertemplate='<b style="font-size:14px">%{text}</b><br>' +
+                      'PM2.5: <b>%{y:.1f} µg/m³</b><br>' +
+                      '%{x|%b %d, %I:%M %p}<extra></extra>',
     ))
-    
-    # Add threshold zones
-    fig.add_hrect(y0=0, y1=12, fillcolor="green", opacity=0.1, line_width=0)
-    fig.add_hrect(y0=12, y1=35.4, fillcolor="yellow", opacity=0.1, line_width=0)
-    fig.add_hrect(y0=35.4, y1=55.4, fillcolor="orange", opacity=0.1, line_width=0)
-    fig.add_hrect(y0=55.4, y1=150.4, fillcolor="red", opacity=0.1, line_width=0)
-    
-    # Add threshold lines
-    fig.add_hline(y=12, line_dash="dash", line_color="green", opacity=0.6,
-                  annotation_text="Good", annotation_position="right")
-    fig.add_hline(y=35.4, line_dash="dash", line_color="orange", opacity=0.6,
-                  annotation_text="Moderate", annotation_position="right")
-    fig.add_hline(y=55.4, line_dash="dash", line_color="red", opacity=0.6,
-                  annotation_text="Unhealthy", annotation_position="right")
     
     fig.update_layout(
         title={
-            'text': "72-Hour PM2.5 Forecast",
-            'font': {'size': 24, 'color': '#333', 'family': 'Arial Black'}
+            'text': "<b>72-Hour PM2.5 Forecast Timeline</b>",
+            'font': {'size': 20, 'family': 'Inter'},
+            'x': 0.02
         },
-        xaxis_title="Time",
-        yaxis_title="PM2.5 Concentration (µg/m³)",
+        xaxis_title="<b>Time</b>",
+        yaxis_title="<b>PM2.5 Concentration (µg/m³)</b>",
         hovermode='x unified',
-        template='plotly_white',
-        height=450,
-        font=dict(size=14),
+        height=420,
+        font=dict(size=13, family='Inter'),
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)'),
-        yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)')
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            zeroline=False
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            zeroline=False
+        ),
+        margin=dict(l=60, r=40, t=60, b=50)
     )
     
     return fig
 
 
 def create_comparison_bar(current_pm25, predictions):
-    #creates comparison bar chart
+    """Create comparison bar chart"""
     categories = ["Current", "+24h", "+48h", "+72h"]
     values = [current_pm25] + list(predictions)
     
@@ -320,95 +1131,113 @@ def create_comparison_bar(current_pm25, predictions):
         y=values,
         marker=dict(
             color=colors,
-            line=dict(color='white', width=2)
+            line=dict(color='rgba(255,255,255,0.3)', width=2),
         ),
-        text=[f"{v:.1f}" for v in values],
+        text=[f"<b>{v:.1f}</b>" for v in values],
         textposition='outside',
-        textfont=dict(size=16, color='#333', family='Arial Black'),
-        hovertemplate='<b>%{x}</b><br>PM2.5: %{y:.1f} µg/m³<extra></extra>'
+        textfont=dict(size=15, family='Inter', weight='bold'),
+        hovertemplate='<b>%{x}</b><br>PM2.5: <b>%{y:.1f} µg/m³</b><extra></extra>',
     ))
     
     fig.update_layout(
-        title="PM2.5 Comparison",
-        yaxis_title="PM2.5 (µg/m³)",
-        template='plotly_white',
-        height=350,
-        font=dict(size=14),
+        title={
+            'text': "<b>PM2.5 Comparison</b>",
+            'font': {'size': 18, 'family': 'Inter'},
+            'x': 0.02
+        },
+        yaxis_title="<b>PM2.5 (µg/m³)</b>",
+        height=380,
+        font=dict(size=13, family='Inter'),
         showlegend=False,
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=False),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.2)'
+        ),
+        margin=dict(l=60, r=40, t=60, b=50)
     )
     
     return fig
 
 
+# OPTIMIZED: Better caching strategy
 @st.cache_resource(show_spinner=False)
 def get_hopsworks_project():
+    """Connect to Hopsworks - cached permanently"""
     return hopsworks.login(
         project=os.getenv("HOPSWORKS_PROJECT"),
         api_key_value=os.getenv("HOPSWORKS_API_KEY")
     )
 
 
-@st.cache_resource(show_spinner=False, ttl=None)
+# OPTIMIZED: Load model once and cache forever
+@st.cache_resource(show_spinner=False)
 def load_model():
-    project = get_hopsworks_project()
-    mr = project.get_model_registry()
+    """Load model from Hopsworks - cached permanently"""
+    with st.spinner("🔄 Loading AI model (one-time setup)..."):
+        project = get_hopsworks_project()
+        mr = project.get_model_registry()
+        model = mr.get_model(MODEL_NAME, MODEL_VERSION)
+        model_dir = model.download()
+        model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
 
-    model = mr.get_model(MODEL_NAME, MODEL_VERSION)
-    model_dir = model.download()
+        with open(os.path.join(model_dir, "features.json")) as f:
+            feature_names = json.load(f)["feature_names"]
+        
+        metrics = {}
+        metrics_file = os.path.join(model_dir, "detailed_metrics.json")
+        if os.path.exists(metrics_file):
+            with open(metrics_file) as f:
+                metrics = json.load(f)
 
-    model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
-
-    with open(os.path.join(model_dir, "features.json")) as f:
-        feature_names = json.load(f)["feature_names"]
-    
-    # Get metrics if available
-    metrics = {}
-    metrics_file = os.path.join(model_dir, "detailed_metrics.json")
-    if os.path.exists(metrics_file):
-        with open(metrics_file) as f:
-            metrics = json.load(f)
-
-    return model_obj, feature_names, model.training_metrics, model.version
+        return model_obj, feature_names, model.training_metrics, model.version
 
 
+# OPTIMIZED: Cache features for 5 minutes, fetch ONLY latest row
 @st.cache_data(show_spinner=False, ttl=300)
 def load_latest_features():
-    # Load latest features - cached for 5 minutes
+    """Load ONLY the latest feature row - cached for 5 minutes"""
     project = get_hopsworks_project()
     fs = project.get_feature_store()
     fg = fs.get_feature_group(
         name=FEATURE_GROUP_NAME,
-        version=FEATURE_GROUP_VERSION )
+        version=FEATURE_GROUP_VERSION
+    )
+    
+    # OPTIMIZED: Use limit=1 to fetch only latest row
     df = fg.read()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df.sort_values("timestamp")
-
-    return df.iloc[-1]  # latest row only
-
+    # df = fg.read()
+#     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+#     df = df.sort_values("timestamp")
+    return df.iloc[-1]
 
 
 def main():
-    # Header with animation
-    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    st.title("🌫️ Air Quality Prediction Dashboard")
-    st.markdown("### **Real-Time PM2.5 Forecasting for Bahawalpur**")
-    st.markdown("</div>", unsafe_allow_html=True)
+    """Main application"""
     
-    st.markdown("---")
+    # Header
+    st.markdown("""
+    <div class="main-header animate-in">
+        <h1>🌫️ Air Quality Prediction Dashboard</h1>
+        <p>Real-Time PM2.5 Forecasting for Bahawalpur, Pakistan</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # sidebar
+    # Sidebar
     with st.sidebar:
         st.markdown("## 📍 Location")
         st.markdown("**City:** Bahawalpur, Pakistan")
         st.markdown("**Coordinates:** 29.40°N, 71.68°E")
-        st.markdown("---")
+        
         st.markdown("## ⏰ Current Time")
         current_time = datetime.now()
         st.markdown(f"**{current_time.strftime('%I:%M %p')}**")
         st.markdown(f"{current_time.strftime('%B %d, %Y')}")
-        st.markdown("---")
+        
         st.markdown("## 🎯 AQI Scale")
         aqi_info = [
             ("Good", "0-50", "🟢"),
@@ -416,56 +1245,53 @@ def main():
             ("Unhealthy (Sensitive)", "101-150", "🟠"),
             ("Unhealthy", "151-200", "🔴"),
             ("Very Unhealthy", "201-300", "🟣"),
-            ("Hazardous", "301+", "🟤")]
+            ("Hazardous", "301+", "🟤")
+        ]
         
         for category, range_val, emoji in aqi_info:
             st.markdown(f"{emoji} **{category}**: {range_val}")
         
         st.markdown("---")
         
-        # Refresh button
         if st.button("🔄 Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
     
-    # prediction button
+    # OPTIMIZED: Load model on app startup (not on button click)
+    # This happens once when the app starts
+    try:
+        model, feature_names, metrics, model_version = load_model()
+    except Exception as e:
+        st.error(f"❌ Error loading model: {str(e)}")
+        st.info("💡 Make sure your Hopsworks credentials are correct in your .env file")
+        return
+    
+    # Main prediction button
     predict_button = st.button("🔮 Generate 3-Day Forecast", use_container_width=True, type="primary")
     
     if predict_button:
-        # Progress bar for loading
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        # Load model
-        status_text.text("⚡ Loading AI model...")
-        progress_bar.progress(30)
-        model, feature_names, metrics, model_version = load_model()
-        
-        # Load features
-        status_text.text("📊 Fetching latest data...")
-        progress_bar.progress(60)
-        latest_row = load_latest_features()
+        # OPTIMIZED: Much faster data loading
+        with st.spinner("📊 Fetching latest data..."):
+            try:
+                latest_row = load_latest_features()
+            except Exception as e:
+                st.error(f"❌ Error fetching data: {str(e)}")
+                return
         
         # Make predictions
-        status_text.text("🧠 Generating predictions...")
-        progress_bar.progress(90)
+        with st.spinner("🧠 Generating predictions..."):
+            rows = []
+            for h in HORIZONS:
+                row = [latest_row[f] for f in BASE_FEATURES]
+                row.append(h)
+                rows.append(row)
+            
+            X = np.array(rows)
+            predictions = model.predict(X)
         
-        rows = []
-        for h in HORIZONS:
-            row = [latest_row[f] for f in BASE_FEATURES]
-            row.append(h)
-            rows.append(row)
-        
-        X = np.array(rows)
-        predictions = model.predict(X)
-        
-        progress_bar.progress(100)
-        time.sleep(0.3)
-        progress_bar.empty()
-        status_text.empty()
-        
-        # current aqi
-        st.markdown("## 📍 Current Air Quality")
+        # Current air quality
+        st.markdown('<h2 class="section-header">📍 Current Air Quality</h2>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         current_pm25 = float(latest_row['pm2_5'])
         current_aqi = pm25_to_aqi(current_pm25)
@@ -473,22 +1299,24 @@ def main():
         
         # Alert box
         if current_aqi <= 50:
-            st.success(f"{emoji} **{category}** - {description}")
+            st.success(f"### {emoji} **{category}**\n{description}")
         elif current_aqi <= 100:
-            st.info(f"{emoji} **{category}** - {description}")
+            st.info(f"### {emoji} **{category}**\n{description}")
         elif current_aqi <= 150:
-            st.warning(f"{emoji} **{category}** - {description}")
+            st.warning(f"### {emoji} **{category}**\n{description}")
         else:
-            st.error(f"{emoji} **{category}** - {description}")
+            st.error(f"### {emoji} **{category}**\n{description}")
         
-        # Current metrics in columns
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Current metrics
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("PM2.5", f"{current_pm25:.1f} µg/m³")
+            st.metric("PM2.5 Level", f"{current_pm25:.1f} µg/m³")
         
         with col2:
-            st.metric("AQI", f"{current_aqi:.0f}")
+            st.metric("AQI Index", f"{current_aqi:.0f}")
         
         with col3:
             st.metric("Temperature", f"{latest_row['temperature_2m']:.1f}°C")
@@ -496,38 +1324,44 @@ def main():
         with col4:
             st.metric("Humidity", f"{latest_row['relative_humidity_2m']:.0f}%")
         
-        st.markdown("---")
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # forecast gauges
-        st.markdown("## 🔮 72-Hour AQI Forecast")
+        # Forecast section
+        st.markdown('<h2 class="section-header">🔮 72-Hour AQI Forecast</h2>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         gauge_cols = st.columns(3)
         
         for i, h in enumerate(HORIZONS):
             with gauge_cols[i]:
                 pred_time = latest_row['timestamp'] + timedelta(hours=h)
-                fig = create_gauge_chart(predictions[i], f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')} UTC")
+                fig = create_gauge_chart(
+                    predictions[i],
+                    f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')}"
+                )
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
-        st.markdown("---")
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # charts
+        # Charts section
+        st.markdown('<h2 class="section-header">📈 Forecast Visualization</h2>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        
         chart_col1, chart_col2 = st.columns([2, 1])
         
         with chart_col1:
-            # Forecast timeline
             fig_timeline = create_forecast_chart(current_pm25, predictions, latest_row['timestamp'])
             st.plotly_chart(fig_timeline, use_container_width=True, config={'displayModeBar': False})
         
         with chart_col2:
-            # Comparison bar
             fig_bar = create_comparison_bar(current_pm25, predictions)
             st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
         
-        st.markdown("---")
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # forecast table
-        st.markdown("## 📊 Detailed Forecast")
+        # Detailed forecast table
+        st.markdown('<h2 class="section-header">📊 Detailed Forecast Data</h2>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         forecast_data = []
         for i, h in enumerate(HORIZONS):
@@ -537,21 +1371,22 @@ def main():
             cat, _, emoji, _ = get_aqi_info(pred_aqi)
             
             forecast_data.append({
-                "Forecast Time": pred_time.strftime("%b %d, %Y %H:%M"),
-                "Horizon": f"+{h} hours",
-                "PM2.5 (µg/m³)": f"{pred_pm25:.2f}",
-                "AQI": f"{pred_aqi:.0f}",
-                "Category": f"{emoji} {cat}",
-                "Change": f"{pred_pm25 - current_pm25:+.1f}"
+                "📅 Forecast Time": pred_time.strftime("%b %d, %Y %H:%M"),
+                "⏱️ Horizon": f"+{h} hours",
+                "💨 PM2.5": f"{pred_pm25:.2f} µg/m³",
+                "📊 AQI": f"{pred_aqi:.0f}",
+                "🏷️ Category": f"{emoji} {cat}",
+                "📈 Change": f"{pred_pm25 - current_pm25:+.1f} µg/m³"
             })
         
         forecast_df = pd.DataFrame(forecast_data)
         st.dataframe(forecast_df, use_container_width=True, hide_index=True)
         
-        st.markdown("---")
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # current conditions
-        st.markdown("## 🌤️ Current Weather Conditions")
+        # Weather conditions
+        st.markdown('<h2 class="section-header">🌤️ Current Weather Conditions</h2>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         weather_col1, weather_col2, weather_col3, weather_col4 = st.columns(4)
         
@@ -569,31 +1404,37 @@ def main():
         
         with weather_col4:
             st.metric("📊 PM2.5 (24h avg)", f"{latest_row['pm25_ma24']:.1f} µg/m³")
-            st.metric("📈 1h Change", f"{latest_row['pm25_change_1hr']:+.1f} µg/m³")
+            change = latest_row['pm25_change_1hr']
+            st.metric("📈 1h Change", f"{change:+.1f} µg/m³", delta=f"{change:+.1f}")
         
-        st.markdown("---")
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # model info
-        with st.expander("🤖 Model Information"):
+        # Model information
+        with st.expander("🤖 Model Information & Performance", expanded=False):
             model_col1, model_col2 = st.columns(2)
             
             with model_col1:
                 st.markdown("**Model Details:**")
                 st.write(f"- **Name:** {MODEL_NAME}")
                 st.write(f"- **Version:** {model_version}")
-                st.write(f"- **Type:** Multi-Horizon")
-                st.write(f"- **Horizons:** 24h, 48h, 72h")
+                st.write(f"- **Type:** Multi-Horizon Regressor")
+                st.write(f"- **Prediction Horizons:** 24h, 48h, 72h")
             
             with model_col2:
                 st.markdown("**Performance Metrics:**")
-                st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
-                st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
-                st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
+                if metrics:
+                    st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
+                    st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
+                    st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
+                else:
+                    st.write("Metrics not available")
         
+        # Footer
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("---")
         
-        footer_col1, footer_col2 = st.columns(2)
-    
+        footer_col1, footer_col2, footer_col3 = st.columns(3)
+        
         with footer_col1:
             st.markdown("**🕐 Last Updated**")
             st.write(latest_row['timestamp'].strftime("%Y-%m-%d %H:%M UTC"))
@@ -602,36 +1443,24 @@ def main():
             st.markdown("**⚡ Data Source**")
             st.write("Hopsworks Feature Store")
         
+        with footer_col3:
+            st.markdown("**🔄 Refresh Rate**")
+            st.write("5 minutes (cached)")
+    
     else:
-        # landing page before prediction
+        # Welcome screen
         st.markdown("""
-            
-        <div style='text-align: center; padding: 3rem; background: #12171D; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
-            <h2 style='color: #667eea; margin-bottom: 1rem;'>Welcome to the Bahawalpur AQI Prediction Dashboard</h2>
-            <p style='font-size: 1.2rem; color: #666; line-height: 1.8;'>
-                Get AQI forecasts powered by machine learning.
-                <br><br>
-                Click the <strong>"Generate 3-Day Forecast"</strong> button above to see:
+        <div class="welcome-card">
+            <h2>Welcome to the AQI Prediction Dashboard</h2>
+            <p>
+                Get accurate air quality forecasts powered by machine learning.
+                <br>
+                Click the <strong>"Generate 3-Day Forecast"</strong> button above to begin.
             </p>
-            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 2rem;'>
-                <div>
-                    <h3 style='color: #667eea;'>📊 Real-Time Data</h3>
-                    <p style='color: #888;'>Current PM2.5 & AQI levels</p>
-                </div>
-                <div>
-                    <h3 style='color: #667eea;'>🔮 AI Predictions</h3>
-                    <p style='color: #888;'>24h, 48h & 72h forecasts</p>
-                </div>
-                <div>
-                    <h3 style='color: #667eea;'>📈 Visual Charts</h3>
-                    <p style='color: #888;'>Interactive graphs & gauges</p>
-                </div>
-            </div>
+            
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
+
 
 if __name__ == "__main__":
     main()

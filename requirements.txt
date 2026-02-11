@@ -12,26 +12,26 @@
 # catboost>=1.2
 # streamlit>=1.31
 # plotly>=5.18
+# Core dependencies
+   numpy==1.26.4
+   pandas==2.2.3
+   requests==2.32.3
+   python-dotenv==1.0.1
 
-numpy==1.26.4
-pandas==2.1.4
-requests
-python-dotenv
+   # ML libraries
+   scikit-learn==1.5.2
+   xgboost==2.1.3
+   lightgbm==4.5.0
+   catboost==1.2.7
+   joblib==1.4.2
 
-# ML
-scikit-learn==1.4.2
-xgboost==2.0.3
-lightgbm==4.3.0
-catboost==1.2.5
-joblib
+   # Explainability
+   shap==0.46.0
 
-# Explainability
-shap==0.44.1
+   # Visualization
+   matplotlib==3.9.3
+   plotly==5.24.1
 
-# Visualization
-matplotlib==3.8.4
-plotly==5.19.0
-
-# Platform
-streamlit==1.31.1
-hopsworks==4.6.4
+   # Platform
+   streamlit==1.40.2
+   hopsworks==4.6.4

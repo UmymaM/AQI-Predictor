@@ -5,11 +5,21 @@
 import pandas as pd
 import openmeteo_requests
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 basePath="data/raw"
 lat, lon = 29.3978, 71.6752
 
-def fetch2MonthsWeatherData(lat,lon):
+def buildHourlyDf(hourly):
+    timestamps=pd.date_range(
+        start=pd.to_datetime(hourly.Time(),unit="s",utc=True),
+        end=pd.to_datetime(hourly.TimeEnd(),unit="s",utc=True),
+        freq=pd.Timedelta(seconds=hourly.Interval()),
+        inclusive="left",
+    )
+    return timestamps
+
+def fetch2MonthsWeatherData(start_date,end_date):
     print("entering weather function")
 
     openmeteo = openmeteo_requests.Client()
@@ -20,9 +30,15 @@ def fetch2MonthsWeatherData(lat,lon):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": "2025-11-02",
-        "end_date": "2026-01-02",
-        "hourly": ["temperature_2m", "relative_humidity_2m", "wind_speed_10m", "pressure_msl", "wind_direction_10m", "precipitation", "cloud_cover_low"],
+        "start_date": start_date,
+        "end_date": end_date,
+        "hourly": ["temperature_2m", 
+            "relative_humidity_2m", 
+            "wind_speed_10m",
+            "pressure_msl", 
+            "wind_direction_10m",
+            "precipitation", 
+            "cloud_cover_low"],
     }
     print("Calling the weather api")
     responses = openmeteo.weather_api(url, params=params)
@@ -43,12 +59,7 @@ def fetch2MonthsWeatherData(lat,lon):
     hourly_precipitation = hourly.Variables(5).ValuesAsNumpy()
     hourly_cloud_cover_low = hourly.Variables(6).ValuesAsNumpy()
 
-    hourly_data = {"timestamp": pd.date_range(
-        start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-        end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = hourly.Interval()),
-        inclusive = "left"
-    )}
+    hourly_data = {"timestamp": buildHourlyDf(hourly)}
 
     hourly_data["temperature_2m"] = hourly_temperature_2m
     hourly_data["relative_humidity_2m"] = hourly_relative_humidity_2m
@@ -62,7 +73,7 @@ def fetch2MonthsWeatherData(lat,lon):
     print("\nHourly data\n", weather_dataframe)
     return weather_dataframe
 
-def fetch2MonthsPollutantData(lat,lon):
+def fetch2MonthsPollutantData(start_date,end_date):
 
     openmeteo = openmeteo_requests.Client()
 
@@ -72,8 +83,10 @@ def fetch2MonthsPollutantData(lat,lon):
     params = {
         "latitude": lat,
         "longitude": lon,
+        "start_date": start_date,
+        "end_date": end_date,
         "hourly": ["pm10", "pm2_5", "carbon_monoxide", "nitrogen_dioxide", "sulphur_dioxide", "ozone", "carbon_dioxide"],
-        "past_days": 61,
+        # "past_days": 61,
     }
     print("Calling the air quality api")
     responses = openmeteo.weather_api(url, params=params)
@@ -94,12 +107,7 @@ def fetch2MonthsPollutantData(lat,lon):
     hourly_ozone = hourly.Variables(5).ValuesAsNumpy()
     hourly_carbon_dioxide = hourly.Variables(6).ValuesAsNumpy()
 
-    hourly_data = {"timestamp": pd.date_range(
-        start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-        end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = hourly.Interval()),
-        inclusive = "left"
-    )}
+    hourly_data = {"timestamp": buildHourlyDf(hourly)}
 
     hourly_data["pm10"] = hourly_pm10
     hourly_data["pm2_5"] = hourly_pm2_5
@@ -113,80 +121,33 @@ def fetch2MonthsPollutantData(lat,lon):
     print(f"Fetched Pollutant Data:  {len(pollutants_dataframe)} rows")
     return pollutants_dataframe
 
-# def ensureDirExists(path):
-#     Path(path).mkdir(parents=True,exist_ok=True)
 
-# def saveToParquet(df,path):
-#     Path(path).parent.mkdir(parents=True,exist_ok=True)
-#     df.to_parquet(path,index=False)        
+# TODO
+#  add function to fetch daily data from api
 
 
-# def mergeDataframes(df1,df2):
 
-# def mergeDataframes(weather_df, pollutants_df):
-
-#     # Ensure timestamps are datetime and UTC
-#     weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"], utc=True)
-#     pollutants_df["timestamp"] = pd.to_datetime(pollutants_df["timestamp"], utc=True)
-
-#     # Sort (important for time series)
-#     weather_df = weather_df.sort_values("timestamp")
-#     pollutants_df = pollutants_df.sort_values("timestamp")
-
-#     # Merge on timestamp
-#     merged_df = pd.merge(
-#         weather_df,
-#         pollutants_df,
-#         on="timestamp",
-#         how="inner"
-#     )
-
-#     print(f"Merged dataframe shape: {merged_df.shape}")
-#     return merged_df
-
-def ingest() -> pd.DataFrame:
-    weather = fetch2MonthsWeatherData(lat, lon)
-    pollutants = fetch2MonthsPollutantData(lat, lon)
+def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
+    weather = fetch2MonthsWeatherData(start_date,end_date)
+    pollutants = fetch2MonthsPollutantData(start_date,end_date)
 
     df = (
         weather
         .merge(pollutants, on="timestamp", how="inner")
+        .drop_duplicates("timestamp")
         .sort_values("timestamp")
         .reset_index(drop=True)
     )
 
     return df
 
-
-# def main():
-
-#     print("main function started!")
-#     lat, lon = 29.3978, 71.6752
-#     print("will start fetching data")
-#     print("testing a theory")
+    # TODO
+    # function to add daily data to the df and push to hopsworks
 
 
-#     weather_df=fetch2MonthsWeatherData(lat,lon)
-#     pollutants_df=fetch2MonthsPollutantData(lat,lon)
-
-#     # weather_df.to_csv(path=f"{basePath}/weather_data_bwp.csv")
-#     # pollutants_df.to_csv(f"{basePath}/pollutant_data_bwp.csv")
-#     # saveToParquet(weather_df,path=f"{basePath}/weather_data_bwp.parquet")
-#     # saveToParquet(pollutants_df,path=f"{basePath}/pollutants_data_bwp.parquet")
-
-#     merged_df=mergeDataframes(weather_df,pollutants_df)
-#     saveToParquet(merged_df,path=f"{basePath}/merged_data_bwp.parquet")
-#     merged_df.to_csv(path_or_buf=f"{basePath}/merged_data_bwp.csv")
-    
-
-#     print("Running test script:")
-#     weather_df.to_csv("test.csv", index=False)
-
-
-#     print("Data Ingested Successfully!!!! :D")
-
-# if __name__ == "__main__":
-#     try:
-#         main()
-#     except Exception as e:
-#         print("ERROR:", e)
+def fetch_recent(last_timestamp: pd.Timestamp = None) -> pd.DataFrame:
+    """Fetch recent hourly data since last timestamp. Default fetches last 24h."""
+    now = datetime.now(timezone.utc)
+    start = last_timestamp + timedelta(seconds=1) if last_timestamp else now - timedelta(hours=24)
+    end = now
+    return fetch_historical(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))

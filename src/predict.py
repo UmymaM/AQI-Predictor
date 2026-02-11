@@ -86,6 +86,10 @@ def load_trained_models(project):
                 model = joblib.load(model_file)
                 
                 models[h] = (model, py_model.name)
+                # models[h] = {
+                #      "sk_model": model,
+                #         "hs_model": py_model,   # keep metadata
+                #     }
                 print(f"  ✓ Loaded successfully, Version={py_model.version}")
                 
             except Exception as e:
@@ -250,6 +254,13 @@ def save_predictions(predictions):
         }, f, indent=2)
     
     print(f"💾 Also saved as: {latest_file}")
+
+def run_prediction_pipeline():
+    project = get_hopsworks_project()
+    latest_features = load_latest_features()
+    models, feature_names = load_trained_models(project)
+    predictions = make_predictions(latest_features, models, feature_names)
+    return latest_features, predictions, models
 
 
 def main():

@@ -65,7 +65,7 @@ st.markdown("""
     
     /* Headers */
     h1 {
-        color: white !important;
+        color: #E0DEE0 !important;
         font-size: 3.5rem !important;
         font-weight: 900 !important;
         text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
@@ -73,7 +73,7 @@ st.markdown("""
     }
     
     h2 {
-        color: white !important;
+        color: #AEA9AF !important;
         font-weight: 700 !important;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
@@ -506,7 +506,7 @@ def main():
         for i, h in enumerate(HORIZONS):
             with gauge_cols[i]:
                 pred_time = latest_row['timestamp'] + timedelta(hours=h)
-                fig = create_gauge_chart(predictions[i], f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')}")
+                fig = create_gauge_chart(predictions[i], f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')} UTC")
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         st.markdown("---")
@@ -609,7 +609,8 @@ def main():
     else:
         # landing page before prediction
         st.markdown("""
-        <div style='text-align: center; padding: 3rem; background: #f5f6fa; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
+            
+        <div style='text-align: center; padding: 3rem; background: #12171D; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
             <h2 style='color: #667eea; margin-bottom: 1rem;'>Welcome to the Bahawalpur AQI Prediction Dashboard</h2>
             <p style='font-size: 1.2rem; color: #666; line-height: 1.8;'>
                 Get AQI forecasts powered by machine learning.

@@ -6,6 +6,11 @@ import numpy as np
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     df=df.copy()
 
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+
+    if df["timestamp"].isna().any():
+        raise ValueError("Invalid timestamps detected after conversion")
+
     # Time features
     df["hour"] = df["timestamp"].dt.hour
     df["day_of_week"]=df["timestamp"].dt.dayofweek    
@@ -27,21 +32,5 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # Drop NaNs
     df = df.dropna()
 
-    # Final feature selection
-    drop_cols = [
-        "carbon_dioxide",
-        "cloud_cover_low",
-        "wind_direction_10m"
-    ]
-    df = df.drop(columns=drop_cols, errors="ignore")
-
     return df
-
-
-# if __name__ == "__main__":
-#     merged_df=pd.read_parquet("data\\raw\\merged_data_bwp.parquet")
-#     df_features=build_features(merged_df)
-#     df_features.to_parquet("data\\processed\\aqi_features_bwp.parquet",index=False)
-#     df_features.to_csv("data\\processed\\aqi_features_bwp.csv",index=False)
-#     print("Fetaure generation complete! Data shape: ",df_features.shape)
     

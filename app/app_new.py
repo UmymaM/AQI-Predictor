@@ -350,50 +350,50 @@ def get_hopsworks_project():
     )
 
 
-# @st.cache_resource(show_spinner=False, ttl=None)
-# def load_model():
-#     project = get_hopsworks_project()
-#     mr = project.get_model_registry()
-
-#     model = mr.get_model(MODEL_NAME, MODEL_VERSION)
-#     model_dir = model.download()
-
-#     model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
-
-#     with open(os.path.join(model_dir, "features.json")) as f:
-#         feature_names = json.load(f)["feature_names"]
-    
-#     # Get metrics if available
-#     metrics = {}
-#     metrics_file = os.path.join(model_dir, "detailed_metrics.json")
-#     if os.path.exists(metrics_file):
-#         with open(metrics_file) as f:
-#             metrics = json.load(f)
-
-#     return model_obj, feature_names, model.training_metrics, model.version
-
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner=False, ttl=None)
 def load_model():
-    """
-    Load the AQI model and feature names from local directory.
-    """
-    
-    model_path = "models/2026-02-09_1933/unified_model.pkl"
-    features_path = "models/2026-02-09_1933/features.json"
-    
-    # Load model
-    model_obj = joblib.load(model_path)
-    
-    # Load feature names
-    with open(features_path, "r") as f:
+    project = get_hopsworks_project()
+    mr = project.get_model_registry()
+
+    model = mr.get_model(MODEL_NAME, MODEL_VERSION)
+    model_dir = model.download()
+
+    model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
+
+    with open(os.path.join(model_dir, "features.json")) as f:
         feature_names = json.load(f)["feature_names"]
     
-    # Dummy metrics if you want to display them
-    metrics = {"rmse": 10.5, "mae": 7.2, "r2": 0.85}  # replace with real values if available
+    # Get metrics if available
+    metrics = {}
+    metrics_file = os.path.join(model_dir, "detailed_metrics.json")
+    if os.path.exists(metrics_file):
+        with open(metrics_file) as f:
+            metrics = json.load(f)
+
+    return model_obj, feature_names, model.training_metrics, model.version
+
+# @st.cache_resource(show_spinner=False)
+# def load_model():
+#     """
+#     Load the AQI model and feature names from local directory.
+#     """
     
-    model_version = "local"
+#     model_path = "models/2026-02-09_1933/unified_model.pkl"
+#     features_path = "models/2026-02-09_1933/features.json"
     
-    return model_obj, feature_names, metrics, model_version
+#     # Load model
+#     model_obj = joblib.load(model_path)
+    
+#     # Load feature names
+#     with open(features_path, "r") as f:
+#         feature_names = json.load(f)["feature_names"]
+    
+#     # Dummy metrics if you want to display them
+#     metrics = {"rmse": 10.5, "mae": 7.2, "r2": 0.85}  # replace with real values if available
+    
+#     model_version = "local"
+    
+#     return model_obj, feature_names, metrics, model_version
 
 
 

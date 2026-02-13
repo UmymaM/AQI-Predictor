@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import time
+from zoneinfo import ZoneInfo
 
 MODEL_NAME = "aqi_predictor_unified"
 MODEL_VERSION = 1
@@ -32,7 +33,7 @@ load_dotenv()
 
 st.set_page_config(
     page_title="AQI Prediction Dashboard",
-    page_icon="🌫️",
+    page_icon="🌀",
     layout="wide",
     initial_sidebar_state="expanded")
 
@@ -65,7 +66,7 @@ st.markdown("""
     
     /* Headers */
     h1 {
-        color: #E0DEE0 !important;
+    
         font-size: 3.5rem !important;
         font-weight: 900 !important;
         text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
@@ -73,7 +74,7 @@ st.markdown("""
     }
     
     h2 {
-        color: #AEA9AF !important;
+        
         font-weight: 700 !important;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
@@ -287,7 +288,7 @@ def create_forecast_chart(current_pm25, predictions, current_time):
     fig.update_layout(
         title={
             'text': "72-Hour PM2.5 Forecast",
-            'font': {'size': 24, 'color': '#333', 'family': 'Arial Black'}
+            'font': {'size': 24, 'family': 'Arial Black'}
         },
         xaxis_title="Time",
         yaxis_title="PM2.5 Concentration (µg/m³)",
@@ -323,8 +324,8 @@ def create_comparison_bar(current_pm25, predictions):
             line=dict(color='white', width=2)
         ),
         text=[f"{v:.1f}" for v in values],
-        textposition='outside',
-        textfont=dict(size=16, color='#333', family='Arial Black'),
+        textposition='inside',
+        textfont=dict(size=14, color='#333', family='Arial Black'),
         hovertemplate='<b>%{x}</b><br>PM2.5: %{y:.1f} µg/m³<extra></extra>'
     ))
     
@@ -332,7 +333,7 @@ def create_comparison_bar(current_pm25, predictions):
         title="PM2.5 Comparison",
         yaxis_title="PM2.5 (µg/m³)",
         template='plotly_white',
-        height=350,
+        height=450,
         font=dict(size=14),
         showlegend=False,
         plot_bgcolor='rgba(0,0,0,0)',
@@ -372,30 +373,28 @@ def load_model():
 
     return model_obj, feature_names, model.training_metrics, model.version
 
-# @st.cache_resource(show_spinner=False)
-# def load_model():
-#     """
-#     Load the AQI model and feature names from local directory.
-#     """
-    
-#     model_path = "models/2026-02-09_1933/unified_model.pkl"
-#     features_path = "models/2026-02-09_1933/features.json"
-    
-#     # Load model
-#     model_obj = joblib.load(model_path)
-    
-#     # Load feature names
-#     with open(features_path, "r") as f:
-#         feature_names = json.load(f)["feature_names"]
-    
-#     # Dummy metrics if you want to display them
-#     metrics = {"rmse": 10.5, "mae": 7.2, "r2": 0.85}  # replace with real values if available
-    
-#     model_version = "local"
-    
-#     return model_obj, feature_names, metrics, model_version
+def aqi_fact_box(current_aqi):
+    if current_aqi <= 50:
+        risk = "Minimal health risk for the general population."
+    elif current_aqi <= 100:
+        risk = "Acceptable, but unusually sensitive individuals may experience discomfort."
+    elif current_aqi <= 150:
+        risk = "Sensitive groups may experience respiratory symptoms."
+    elif current_aqi <= 200:
+        risk = "Increased likelihood of adverse health effects for everyone."
+    else:
+        risk = "Serious health effects possible. Emergency-level pollution."
 
+    st.info(
+        f"""
+        **📘 AQI Insight**
 
+        • **AQI (Air Quality Index)** converts pollutant concentration into a health-based scale (0–500).  
+        • **PM2.5** particles are **~30× smaller than a human hair** and can penetrate deep into the lungs and bloodstream.  
+        • Epidemiological studies show that **every +10 µg/m³ increase in PM2.5 raises mortality risk by ~6–8%**.  
+
+        """
+    )
 
 
 
@@ -414,11 +413,10 @@ def load_latest_features():
     return df.iloc[-1]  # latest row only
 
 
-
 def main():
     # Header with animation
     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    st.title("🌫️ Air Quality Prediction Dashboard")
+    st.title("🌀 Air Quality Prediction Dashboard")
     st.markdown("### **Real-Time PM2.5 Forecasting for Bahawalpur**")
     st.markdown("</div>", unsafe_allow_html=True)
     
@@ -431,7 +429,7 @@ def main():
         st.markdown("**Coordinates:** 29.40°N, 71.68°E")
         st.markdown("---")
         st.markdown("## ⏰ Current Time")
-        current_time = datetime.now()
+        current_time = datetime.now(ZoneInfo("Asia/Karachi"))
         st.markdown(f"**{current_time.strftime('%I:%M %p')}**")
         st.markdown(f"{current_time.strftime('%B %d, %Y')}")
         st.markdown("---")
@@ -496,6 +494,7 @@ def main():
         current_pm25 = float(latest_row['pm2_5'])
         current_aqi = pm25_to_aqi(current_pm25)
         category, color, emoji, description = get_aqi_info(current_aqi)
+
         
         # Alert box
         if current_aqi <= 50:
@@ -521,6 +520,8 @@ def main():
         
         with col4:
             st.metric("Humidity", f"{latest_row['relative_humidity_2m']:.0f}%")
+
+        aqi_fact_box(current_aqi)    
         
         st.markdown("---")
         
@@ -534,7 +535,15 @@ def main():
                 pred_time = latest_row['timestamp'] + timedelta(hours=h)
                 fig = create_gauge_chart(predictions[i], f"+{h} Hours<br>{pred_time.strftime('%b %d, %H:00')} UTC")
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.info(
+        """
+        ℹ️The **Δ (delta)** shown on each gauge represents how far the predicted air quality
+        deviates from the **upper limit of a “Good” air quality level**.
         
+        • **Reference value:** PM2.5 = **35.4 µg/m³** (AQI ≈ 100)  
+        """
+        )
+
         st.markdown("---")
         
         # charts
@@ -607,14 +616,14 @@ def main():
                 st.markdown("**Model Details:**")
                 st.write(f"- **Name:** {MODEL_NAME}")
                 st.write(f"- **Version:** {model_version}")
-                st.write(f"- **Type:** Multi-Horizon")
                 st.write(f"- **Horizons:** 24h, 48h, 72h")
-            
-            with model_col2:
-                st.markdown("**Performance Metrics:**")
                 st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
-                st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
-                st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
+            
+            # with model_col2:
+            #     st.markdown("**Performance Metrics:**")
+            #     st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
+            #     st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
+            #     st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
         
         st.markdown("---")
         
@@ -632,8 +641,8 @@ def main():
         # landing page before prediction
         st.markdown("""
             
-        <div style='text-align: center; padding: 3rem; background: #12171D; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
-            <h2 style='color: #667eea; margin-bottom: 1rem;'>Welcome to the Bahawalpur AQI Prediction Dashboard</h2>
+        <div style='text-align: center; padding: 3rem; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);'>
+            <h2 margin-bottom: 1rem;'>Welcome to the Bahawalpur AQI Prediction Dashboard</h2>
             <p style='font-size: 1.2rem; color: #666; line-height: 1.8;'>
                 Get AQI forecasts powered by machine learning.
                 <br><br>

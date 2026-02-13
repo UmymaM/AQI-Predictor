@@ -6,6 +6,8 @@ from datetime import datetime
 import hopsworks
 from dotenv import load_dotenv
 import os
+from time import sleep
+import urllib3
 
 from features import build_features
 
@@ -126,6 +128,29 @@ def fetch_current_data():
 
     return merged_df
 
+from time import sleep
+
+# to reduce pipeline failures
+def insert_with_retry(fg, data, max_retries=3, delay=5):
+    """Insert data with exponential backoff retry logic"""
+    for attempt in range(max_retries):
+        try:
+            fg.insert(data, write_options={"wait_for_job": False})
+            print(f"✓ Insert successful on attempt {attempt + 1}")
+            return True
+        except (requests.exceptions.ConnectionError, 
+                urllib3.exceptions.ProtocolError) as e:
+            if attempt < max_retries - 1:
+                wait_time = delay * (2 ** attempt)  # exponential backoff
+                print(f"⚠️  Connection failed on attempt {attempt + 1}")
+                print(f"   Retrying in {wait_time}s...")
+                sleep(wait_time)
+            else:
+                print(f"❌ All {max_retries} attempts failed")
+                raise
+
+
+
 # main pipeline
 def build_hourly_features():
 
@@ -224,7 +249,8 @@ def build_hourly_features():
         print("INSERTING TO HOPSWORKS")
         print("=" * 70)
         
-        fg.insert(latest, write_options={"wait_for_job": False})
+        fg.insert(latest, write_options={"wait_for_job": True})
+        # insert_with_retry(fg, latest, max_retries=3, delay=5)
 
         print("\n" + "=" * 70)
         print("✅ HOURLY FEATURES INSERTED SUCCESSFULLY")

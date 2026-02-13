@@ -1,5 +1,8 @@
 # **AQI Predictor**
 
+## **Prediction Dashboard**:
+[https://aqi-predictor-bwp.streamlit.app/](https://aqi-predictor-bwp.streamlit.app/)
+
 ## **Overview**
 
 This project implements an **end-to-end machine learning system** to forecast **Air Quality Index (AQI)** by predicting **PM2.5 concentration levels** for the next **24, 48, and 72 hours** in **Bahawalpur, Pakistan**.

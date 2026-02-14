@@ -14,7 +14,7 @@ def buildHourlyDf(hourly):
     )
     return timestamps
 
-def fetch2MonthsWeatherData(start_date,end_date):
+def fetchHistoricalWeatherData(start_date,end_date):
     print("entering weather function")
 
     openmeteo = openmeteo_requests.Client()
@@ -66,7 +66,7 @@ def fetch2MonthsWeatherData(start_date,end_date):
     print("\nHourly data\n", weather_dataframe)
     return weather_dataframe
 
-def fetch2MonthsPollutantData(start_date,end_date):
+def fetchHistoricalPollutantData(start_date,end_date):
 
     openmeteo = openmeteo_requests.Client()
 
@@ -111,8 +111,8 @@ def fetch2MonthsPollutantData(start_date,end_date):
 
 
 def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
-    weather = fetch2MonthsWeatherData(start_date,end_date)
-    pollutants = fetch2MonthsPollutantData(start_date,end_date)
+    weather = fetchHistoricalWeatherData(start_date,end_date)
+    pollutants = fetchHistoricalPollutantData(start_date,end_date)
 
     df = (
         weather
@@ -121,7 +121,6 @@ def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
         .sort_values("timestamp")
         .reset_index(drop=True)
     )
-
     return df
 
 

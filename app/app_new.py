@@ -644,13 +644,7 @@ def main():
                 st.write(f"- **Version:** {model_version}")
                 st.write(f"- **Horizons:** 24h, 48h, 72h")
                 st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
-            
-            # with model_col2:
-            #     st.markdown("**Performance Metrics:**")
-            #     st.write(f"- **RMSE:** {metrics.get('rmse', 'N/A'):.2f}")
-            #     st.write(f"- **MAE:** {metrics.get('mae', 'N/A'):.2f}")
-            #     st.write(f"- **R² Score:** {metrics.get('r2', 'N/A'):.3f}")
-        
+           
         st.markdown("---")
         
         footer_col1, footer_col2 = st.columns(2)

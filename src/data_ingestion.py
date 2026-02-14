@@ -1,13 +1,8 @@
-#In this file, i will be ingesting data from openmeteos API
-# the data comprises two months of historical weather+pollutant data for Bahawalpur
-#the fetched data will be used to train the models
-
 import pandas as pd
 import openmeteo_requests
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-basePath="data/raw"
 lat, lon = 29.3978, 71.6752
 
 def buildHourlyDf(hourly):
@@ -24,8 +19,6 @@ def fetch2MonthsWeatherData(start_date,end_date):
 
     openmeteo = openmeteo_requests.Client()
 
-    # Make sure all required weather variables are listed here
-    # The order of variables in hourly or daily is important to assign them correctly below
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -77,8 +70,6 @@ def fetch2MonthsPollutantData(start_date,end_date):
 
     openmeteo = openmeteo_requests.Client()
 
-    # Make sure all required weather variables are listed here
-    # The order of variables in hourly or daily is important to assign them correctly below
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
     params = {
         "latitude": lat,
@@ -86,18 +77,15 @@ def fetch2MonthsPollutantData(start_date,end_date):
         "start_date": start_date,
         "end_date": end_date,
         "hourly": ["pm10", "pm2_5", "carbon_monoxide", "nitrogen_dioxide", "sulphur_dioxide", "ozone", "carbon_dioxide"],
-        # "past_days": 61,
     }
     print("Calling the air quality api")
     responses = openmeteo.weather_api(url, params=params)
 
-    # Process first location. Add a for-loop for multiple locations or weather models
     response = responses[0]
     print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
     print(f"Elevation: {response.Elevation()} m asl")
     print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
 
-    # Process hourly data. The order of variables needs to be the same as requested.
     hourly = response.Hourly()
     hourly_pm10 = hourly.Variables(0).ValuesAsNumpy()
     hourly_pm2_5 = hourly.Variables(1).ValuesAsNumpy()
@@ -122,11 +110,6 @@ def fetch2MonthsPollutantData(start_date,end_date):
     return pollutants_dataframe
 
 
-# TODO
-#  add function to fetch daily data from api
-
-
-
 def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
     weather = fetch2MonthsWeatherData(start_date,end_date)
     pollutants = fetch2MonthsPollutantData(start_date,end_date)
@@ -141,12 +124,8 @@ def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
 
     return df
 
-    # TODO
-    # function to add daily data to the df and push to hopsworks
-
 
 def fetch_recent(last_timestamp: pd.Timestamp = None) -> pd.DataFrame:
-    """Fetch recent hourly data since last timestamp. Default fetches last 24h."""
     now = datetime.now(timezone.utc)
     start = last_timestamp + timedelta(seconds=1) if last_timestamp else now - timedelta(hours=24)
     end = now

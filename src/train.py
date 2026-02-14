@@ -37,7 +37,7 @@ HORIZONS = [24, 48, 72]
 BASE_FEATURES: List[str] = [
     "pm25_lag1","pm25_lag6","pm25_lag24","pm25_ma6","pm25_ma24","pm25_change_1hr",    
     "temperature_2m","relative_humidity_2m", "wind_speed_10m","pressure_msl",
-     "pm10","carbon_monoxide","nitrogen_dioxide","sulphur_dioxide",
+    #  "pm10","carbon_monoxide","nitrogen_dioxide","sulphur_dioxide",
     "hour","day_of_week", "day","month",]
 
 def get_hopsworks_project():
@@ -105,22 +105,60 @@ def get_model_candidates() -> Dict:
 
         "lasso": Lasso(alpha=0.5,random_state=RANDOM_STATE,max_iter=2000),
 
-        "rf": RandomForestRegressor(n_estimators=300,max_depth=15,min_samples_split=5,
-            min_samples_leaf=2,random_state=RANDOM_STATE,n_jobs=-1),
+        "rf": RandomForestRegressor(
+            n_estimators=400,           # More trees (was 300)
+            max_depth=12,               # Slightly shallower (was 15)
+            min_samples_split=8,        # More regularization (was 5)
+            min_samples_leaf=3,         # More regularization (was 2)
+            max_features='sqrt',        # Feature sampling (new)
+            random_state=RANDOM_STATE,
+            n_jobs=-1
+        ),
 
-        "gbr": GradientBoostingRegressor(n_estimators=200,learning_rate=0.1,
-            max_depth=5,random_state=RANDOM_STATE),
+        "gbr": GradientBoostingRegressor(
+            n_estimators=300,           # More trees (was 200)
+            learning_rate=0.05,         # Slower (was 0.1)
+            max_depth=6,                # Deeper (was 5)
+            min_samples_split=10,       # Regularization (new)
+            min_samples_leaf=4,         # Regularization (new)
+            subsample=0.85,             # Stochastic boosting (new)
+            max_features='sqrt',        # Feature sampling (new)
+            random_state=RANDOM_STATE
+        ),
 
-        "xgboost": XGBRegressor(n_estimators=300,learning_rate=0.1,max_depth=5,
-            subsample=0.8,colsample_bytree=0.8,random_state=RANDOM_STATE,
-            n_jobs=-1,verbosity=0),
+        "xgboost": XGBRegressor(
+            n_estimators=400,           # More trees (was 300)
+            learning_rate=0.03,         # Slower (was 0.1)
+            max_depth=6,                # Deeper (was 5)
+            min_child_weight=3,         # Regularization (new)
+            subsample=0.85,             # More data (was 0.8)
+            colsample_bytree=0.85,      # More features (was 0.8)
+            gamma=0.01,                 # Pruning (new)
+            reg_alpha=0.01,             # L1 reg (new)
+            reg_lambda=0.1,             # L2 reg (new)
+            random_state=RANDOM_STATE,
+            n_jobs=-1,
+            verbosity=0
+        ),
         
-        "lightgbm": LGBMRegressor(n_estimators=300,learning_rate=0.1,max_depth=5,
-            num_leaves=31,subsample=0.8,colsample_bytree=0.8,random_state=RANDOM_STATE,
-            n_jobs=-1,verbose=-1),
+        "lightgbm": LGBMRegressor(n_estimators=400,learning_rate=0.03,max_depth=6,
+            num_leaves=40,min_child_samples=15, subsample=0.85,colsample_bytree=0.85,      # More features (was 0.8)
+            reg_alpha=0.01,             # L1 regularization (new)
+            reg_lambda=0.01,            # L2 regularization (new)
+            random_state=RANDOM_STATE,
+            n_jobs=-1,
+            verbose=-1),
         
-        "catboost": CatBoostRegressor(iterations=300,learning_rate=0.1,depth=5,
-            subsample=0.8,random_state=RANDOM_STATE,verbose=0,thread_count=-1),
+        "catboost": CatBoostRegressor(
+            iterations=400,             # More iterations (was 300)
+            learning_rate=0.03,         # Slower (was 0.1)
+            depth=6,                    # Deeper (was 5)
+            l2_leaf_reg=3,              # Regularization (new)
+            subsample=0.85,             # More data (was 0.8)
+            random_state=RANDOM_STATE,
+            verbose=0,
+            thread_count=-1
+        ),
         
         "extratrees": ExtraTreesRegressor(n_estimators=300,max_depth=15,min_samples_split=5,
             min_samples_leaf=2,random_state=RANDOM_STATE,n_jobs=-1)

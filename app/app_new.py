@@ -553,7 +553,7 @@ def main():
         ℹ️The **Δ (delta)** shown on each gauge represents how far the predicted air quality
         deviates from the **upper limit of a “Good” air quality level**.
         
-        • **Reference value:** PM2.5 = **35.4 µg/m³** (AQI ≈ 100)  
+        •**Reference value:** AQI = **100** (PM2.5 ≈ 35.4 µg/m³)   
         """
         )
 

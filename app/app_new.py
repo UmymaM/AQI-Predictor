@@ -201,7 +201,7 @@ def create_gauge_chart(value, title, max_value=300):
         domain={'x': [0, 1], 'y': [0, 1]},
         title={'text': f"{title}<br><span style='font-size:0.7em'>{emoji} {category}</span>", 
                'font': {'size': 20, 'color': '#333'}},
-        delta={'reference': 35.4, 'increasing': {'color': "#ff0000"}},
+        delta={'reference': 100, 'increasing': {'color': "#ff0000"}},
         number={'font': {'size': 40}},
         gauge={
             'axis': {'range': [None, max_value], 'tickwidth': 2},
@@ -350,28 +350,41 @@ def get_hopsworks_project():
         api_key_value=os.getenv("HOPSWORKS_API_KEY")
     )
 
-
 @st.cache_resource(show_spinner=False, ttl=None)
 def load_model():
+    # load best model based on highest r2 scores
     project = get_hopsworks_project()
     mr = project.get_model_registry()
-
-    model = mr.get_model(MODEL_NAME, MODEL_VERSION)
-    model_dir = model.download()
-
+    all_models = mr.get_models(MODEL_NAME)
+    
+    if not all_models:
+        return None, None, None, None
+    
+    # Find model with highest R² score
+    best_model = None
+    best_r2 = -float('inf')
+    
+    for model in all_models:
+        r2 = model.training_metrics.get('r2', -float('inf'))
+        if r2 > best_r2:
+            best_r2 = r2
+            best_model = model
+    
+    if best_model is None:
+        return None, None, None, None
+    
+    # Download and load the best model
+    model_dir = best_model.download()
     model_obj = joblib.load(os.path.join(model_dir, "model.pkl"))
-
+    
+    # Load feature names
     with open(os.path.join(model_dir, "features.json")) as f:
         feature_names = json.load(f)["feature_names"]
     
-    # Get metrics if available
-    metrics = {}
-    metrics_file = os.path.join(model_dir, "detailed_metrics.json")
-    if os.path.exists(metrics_file):
-        with open(metrics_file) as f:
-            metrics = json.load(f)
-
-    return model_obj, feature_names, model.training_metrics, model.version
+    # Load metrics
+    metrics = best_model.training_metrics.copy()
+    
+    return model_obj, feature_names, metrics, best_model.version
 
 def aqi_fact_box(current_aqi):
     if current_aqi <= 50:

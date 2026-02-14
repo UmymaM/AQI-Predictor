@@ -350,14 +350,16 @@ def get_hopsworks_project():
         api_key_value=os.getenv("HOPSWORKS_API_KEY")
     )
 
+# 
 @st.cache_resource(show_spinner=False, ttl=None)
 def load_model():
-    # load best model based on highest r2 scores
+    """Load the best model version based on highest R² score"""
     project = get_hopsworks_project()
     mr = project.get_model_registry()
     all_models = mr.get_models(MODEL_NAME)
     
     if not all_models:
+        st.error(f"❌ No models found with name '{MODEL_NAME}'")
         return None, None, None, None
     
     # Find model with highest R² score
@@ -371,6 +373,7 @@ def load_model():
             best_model = model
     
     if best_model is None:
+        st.error("❌ Could not find any valid models")
         return None, None, None, None
     
     # Download and load the best model
@@ -384,8 +387,18 @@ def load_model():
     # Load metrics
     metrics = best_model.training_metrics.copy()
     
+    # Add detailed metrics if available
+    metrics_file = os.path.join(model_dir, "detailed_metrics.json")
+    if os.path.exists(metrics_file):
+        with open(metrics_file) as f:
+            detailed_metrics = json.load(f)
+            # Find best algorithm by R²
+            best_algo = max(detailed_metrics.keys(), 
+                          key=lambda k: detailed_metrics[k]["overall"].get("r2", -float('inf')))
+            metrics.update(detailed_metrics[best_algo])
+            metrics["algorithm"] = best_algo
+    
     return model_obj, feature_names, metrics, best_model.version
-
 def aqi_fact_box(current_aqi):
     if current_aqi <= 50:
         risk = "Minimal health risk for the general population."

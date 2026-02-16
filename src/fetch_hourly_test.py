@@ -6,7 +6,6 @@ import urllib3
 import os
 import hopsworks
 from features import build_features
-from train import get_hopsworks_project
 
 FEATURE_GROUP_NAME = "aqi_features_hourly"
 FEATURE_GROUP_VERSION = 1

@@ -1,11 +1,10 @@
 # this script runs once to backfill historical data from open-meteo into hopsworks
-
 import os
 import pandas as pd
 import hopsworks
 from dotenv import load_dotenv
 from features import build_features
-from data_ingestion import fetch_historical, fetch_recent
+from data_ingestion import fetch_historical
 
 load_dotenv()
 
@@ -35,7 +34,6 @@ def main():
     )
 
     # Fetch raw data
-    
     print("Running historical backfill")
     raw_df = fetch_historical("2025-05-02", "2026-01-19")
     

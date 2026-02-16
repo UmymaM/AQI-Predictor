@@ -1,7 +1,5 @@
 import pandas as pd
 import openmeteo_requests
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
 
 lat, lon = 29.3978, 71.6752
 
@@ -15,8 +13,6 @@ def buildHourlyDf(hourly):
     return timestamps
 
 def fetchHistoricalWeatherData(start_date,end_date):
-    print("entering weather function")
-
     openmeteo = openmeteo_requests.Client()
 
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -33,14 +29,11 @@ def fetchHistoricalWeatherData(start_date,end_date):
             "precipitation", 
             "cloud_cover_low"],
     }
-    print("Calling the weather api")
+
     responses = openmeteo.weather_api(url, params=params)
 
     # Process first location. Add a for-loop for multiple locations or weather models
     response = responses[0]
-    print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
-    print(f"Elevation: {response.Elevation()} m asl")
-    print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
 
     # Process hourly data. The order of variables needs to be the same as requested.
     hourly = response.Hourly()
@@ -63,7 +56,6 @@ def fetchHistoricalWeatherData(start_date,end_date):
     hourly_data["cloud_cover_low"] = hourly_cloud_cover_low
 
     weather_dataframe = pd.DataFrame(data = hourly_data)
-    print("\nHourly data\n", weather_dataframe)
     return weather_dataframe
 
 def fetchHistoricalPollutantData(start_date,end_date):
@@ -76,15 +68,12 @@ def fetchHistoricalPollutantData(start_date,end_date):
         "longitude": lon,
         "start_date": start_date,
         "end_date": end_date,
-        "hourly": ["pm10", "pm2_5", "carbon_monoxide", "nitrogen_dioxide", "sulphur_dioxide", "ozone", "carbon_dioxide"],
+        "hourly": ["pm10","pm2_5","carbon_monoxide","nitrogen_dioxide",
+                    "sulphur_dioxide", "ozone", "carbon_dioxide"],
     }
-    print("Calling the air quality api")
     responses = openmeteo.weather_api(url, params=params)
 
     response = responses[0]
-    print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
-    print(f"Elevation: {response.Elevation()} m asl")
-    print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
 
     hourly = response.Hourly()
     hourly_pm10 = hourly.Variables(0).ValuesAsNumpy()
@@ -106,7 +95,7 @@ def fetchHistoricalPollutantData(start_date,end_date):
     hourly_data["carbon_dioxide"] = hourly_carbon_dioxide
 
     pollutants_dataframe = pd.DataFrame(data = hourly_data)
-    print(f"Fetched Pollutant Data:  {len(pollutants_dataframe)} rows")
+
     return pollutants_dataframe
 
 
@@ -122,10 +111,3 @@ def fetch_historical(start_date: str, end_date: str) -> pd.DataFrame:
         .reset_index(drop=True)
     )
     return df
-
-
-def fetch_recent(last_timestamp: pd.Timestamp = None) -> pd.DataFrame:
-    now = datetime.now(timezone.utc)
-    start = last_timestamp + timedelta(seconds=1) if last_timestamp else now - timedelta(hours=24)
-    end = now
-    return fetch_historical(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))

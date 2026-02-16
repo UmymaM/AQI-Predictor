@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 
 
-
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     df=df.copy()
 

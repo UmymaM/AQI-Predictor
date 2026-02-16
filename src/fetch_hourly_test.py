@@ -3,6 +3,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from time import sleep
 import urllib3
+import os
+import hopsworks
 from features import build_features
 from train import get_hopsworks_project
 
@@ -29,7 +31,6 @@ def align_dtypes_with_feature_group(df, fg):
             df[col] = df[col].astype("int64")
 
     return df
-
 
 # fetching current weather+pollutant data
 def fetch_current_data():
@@ -128,7 +129,9 @@ def build_hourly_features():
     print("Hourly Feature Pipeline")
     try:
         current_df = fetch_current_data()
-        project = get_hopsworks_project()
+        project_name = os.getenv("HOPSWORKS_PROJECT")
+        api_key = os.getenv("HOPSWORKS_API_KEY")
+        project=hopsworks.login(project=project_name, api_key_value=api_key)
         fs = project.get_feature_store()
         fg = fs.get_or_create_feature_group(
             name=FEATURE_GROUP_NAME,

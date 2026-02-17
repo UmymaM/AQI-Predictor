@@ -90,20 +90,6 @@ EDA confirms that:
 - Lag features dominate short-term forecasts
 - Weather features gain importance at longer horizons
 
-**Outliers:**
-- ~328 outliers detected out of ~6,900 rows (~4.7%)
-- Retained to preserve real-world pollution spikes
-
----
-
-## **Baseline Evaluation**
-
-A **naïve persistence baseline** (current PM2.5 = future PM2.5) was used to assess prediction difficulty.
-
-Key insight:
-- Error increases sharply with horizon
-- ML models are expected to **beat baseline RMSE** to demonstrate value
-
 ---
 
 ## **Feature Store and Model Registry**
@@ -131,7 +117,7 @@ Key insight:
 The system is fully automated using **GitHub Actions**:
 
 - **Hourly:** data ingestion and feature updates
-- **Daily:** model retraining at **02:00 UTC**
+- **Daily:** model retraining at **21:00 UTC**
 - Secrets managed via GitHub repository settings
 
 ---

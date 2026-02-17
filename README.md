@@ -49,7 +49,6 @@ This project uses a **direct multi-horizon regression approach**:
 **Why direct multi-horizon forecasting?**
 - More stable than recursive forecasting
 - Explicit control over each prediction horizon
-- Easier performance analysis per horizon
 
 ---
 

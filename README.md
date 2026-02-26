@@ -1,24 +1,16 @@
-# **AQI Predictor**
+# **AQI Predictor — Bahawalpur, Pakistan**
+
+**Multi-horizon PM2.5 forecasting system with 24h, 48h, and 72h predictions**
 
 ## **Prediction Dashboard**:
 [https://aqi-predictor-bwp.streamlit.app/](https://aqi-predictor-bwp.streamlit.app/)
 
 ## **Overview**
 
-This project implements an **end-to-end machine learning system** to forecast **Air Quality Index (AQI)** by predicting **PM2.5 concentration levels** for the next **24, 48, and 72 hours** in **Bahawalpur, Pakistan**.
-The system is built on a **100% serverless architecture** and trains *multiple regression models* to generate **short-term air quality forecasts**. Predicted PM2.5 values are subsequently converted into **standardized AQI categories** for user-friendly interpretation.
+This project implements an **end-to-end machine learning system** to forecast **PM2.5 concentrations** for the next **24, 48, and 72 hours** in **Bahawalpur, Pakistan**, and converts them into **standardized AQI categories**.
 
----
-
-## **Key Objectives**
-
-- Build a reliable **data ingestion pipeline** for weather and air-pollution data  
-- Engineer meaningful **temporal and lag-based features** for time-series forecasting  
-- Train and evaluate **multiple regression models** for short-term AQI prediction  
-- Apply **SHAP analysis** to explain model predictions and feature importance  
-- Store features and models using **Hopsworks Feature Store** and **Model Registry**  
-- Automate data updates and retraining using **GitHub Actions**  
-- Provide an interactive **Streamlit dashboard** for visualization and forecasts  
+The system is designed as a **cloud-native, automated ML pipeline**, covering:
+data ingestion → feature engineering → model training → explainability → deployment → visualization.
 
 ---
 
@@ -29,111 +21,140 @@ The system is built on a **100% serverless architecture** and trains *multiple r
 - **Forecast Horizons:** `+24h`, `+48h`, `+72h`  
 
 ### **Why PM2.5?**
-
-**PM2.5** is the *most health-critical air pollutant* and serves as the **primary driver** for AQI calculations.
-Rather than predicting AQI directly, the system predicts **PM2.5**, which is later converted into AQI using **standard PM2.5-to-AQI conversion formulas**.
-
----
-
-## **System Architecture Overview**
-
-### **1. Data Ingestion**
-
-Hourly data is collected from:
-
-- **Open-Meteo** — historical + current data
-
-**Collected variables include:**
-
-- PM2.5 concentration  
-- Temperature  
-- Humidity  
-- Wind speed  
-- Surface pressure  
+PM2.5 is the **most health-critical air pollutant** and the primary driver of AQI.
+Instead of predicting AQI directly, the system predicts **PM2.5**, which is then converted to AQI using **standard PM2.5 → AQI formulas**.
 
 ---
 
-### **2. Feature Engineering**
+## **Data Overview**
 
-Raw data is transformed into **ML-ready features**, including:
-
-- **Time-based features:** `hour`, `day_of_week`, `day_of_month`, `month`  
-- **Lag features:** previous PM2.5 values (`1h`, `6h`, `24h`)  
-- **Rolling statistics:** moving averages and short-term trends  
-- **Change metrics:** hour-to-hour PM2.5 variation  
-- **Future targets:** created using time shifts for each forecast horizon  
+- **Granularity:** Hourly
+- **Dataset Size:** ~6,900 rows
+- **Location:** Bahawalpur, Pakistan
+- **Source:** Open-Meteo (air quality + weather data)
 
 ---
 
-### **3. Feature Store (Hopsworks)**
+## **Modeling Strategy**
 
-All engineered features are stored in a **Hopsworks Feature Group**, enabling:
+This project uses a **direct multi-horizon regression approach**:
 
-- Consistent feature reuse for **training and inference**  
-- **Versioned feature management**  
-- Improved **reproducibility and traceability**  
+- Separate future targets are created using time shifts:
+  - `target_24h`
+  - `target_48h`
+  - `target_72h`
+- Each horizon is learned **explicitly**, avoiding recursive error accumulation.
+- The approach supports **multi-output regression pipelines** while maintaining horizon-specific evaluation.
 
----
-
-### **4. Model Training and Evaluation**
-
-For each prediction horizon (`24h`, `48h`, `72h`), multiple models are trained:
-
-- **Linear baseline:** Ridge Regression  
-- **Tree-based ensembles:** Random Forest, Gradient Boosting  
-
-**Evaluation metrics include:**
-
-- `RMSE`  
-- `MAE`  
-- `R² Score`  
-
-The **best-performing model** for each horizon is selected and versioned.
+**Why direct multi-horizon forecasting?**
+- More stable than recursive forecasting
+- Explicit control over each prediction horizon
 
 ---
 
-### **5. Explainability and Analysis**
+## **Feature Engineering**
 
-**SHAP (SHapley Additive exPlanations)** is used to:
+The following feature groups are used:
 
-- Identify *influential features*  
-- Validate feature relevance  
-- Support model selection decisions  
+### **PM2.5 Temporal Features**
+- `pm25_lag1`, `pm25_lag6`, `pm25_lag24`
+- `pm25_ma6`, `pm25_ma24`
+- `pm25_change_1hr`
 
-Exploratory Data Analysis (**EDA**) and visualizations are performed throughout development to analyze **trends, seasonality, and anomalies**.
+### **Weather Features**
+- `temperature_2m`
+- `relative_humidity_2m`
+- `wind_speed_10m`
+- `pressure_msl`
+
+### **Time-Based Features**
+- `hour`
+- `day_of_week`
+- `day`
+- `month`
+
+### **Dropped Features (Low Predictive Value)**
+Based on EDA:
+- `precipitation`
+- `cloud_cover_low`
+- `wind_direction_low`
+- `month` (retained only for analysis)
+
+---
+
+## **Exploratory Data Analysis (EDA)**
+
+EDA confirms that:
+- PM2.5 exhibits **strong short-term autocorrelation**
+- Predictability **decreases with horizon** (24h → 72h)
+- Lag features dominate short-term forecasts
+- Weather features gain importance at longer horizons
 
 ---
 
-### **6. Model Registry and Automation**
+## **Feature Store and Model Registry**
 
-Selected models are:
-
-1. Saved in the **Hopsworks Model Registry**  
-2. **Version-controlled** for traceability  
-
-**GitHub Actions** automate:
-
-- Periodic data ingestion  
-- Feature rebuilding  
-- Model retraining when sufficient new data is available  
+- All engineered features are stored in **Hopsworks Feature Store**
+- Trained models are versioned using **Hopsworks Model Registry**
+- Ensures:
+  - Reproducibility
+  - Consistent training/inference features
+  - Traceable model versions
 
 ---
 
-### **7. Frontend Application**
+## **Explainability**
 
-A **Streamlit-based dashboard** provides:
-
-- Historical **PM2.5 and AQI visualizations**  
-- Short-term **air quality forecasts**  
-- AQI category indicators with **color coding**  
-- Model **explainability insights**  
+**SHAP (SHapley Additive Explanations)** is used to:
+- Identify influential features
+- Validate feature engineering decisions
+- Interpret horizon-specific behavior
 
 ---
+
+## **Automation**
+
+The system is fully automated using **GitHub Actions**:
+
+- **Hourly:** data ingestion and feature updates
+- **Daily:** model retraining at **21:00 UTC**
+- Secrets managed via GitHub repository settings
+
+---
+
+## **Frontend Application**
+
+A **Streamlit dashboard** provides:
+- Historical PM2.5 and AQI trends
+- 24h / 48h / 72h forecasts
+- AQI category visualization with color indicators
+- Interactive plots for interpretation
+
+---
+
+## **Tech Stack**
+
+| Component | Technology |
+|--------|-----------|
+| Data Source | Open-Meteo API |
+| Feature Store | Hopsworks |
+| Model Registry | Hopsworks |
+| Models | Ridge, Tree-based Ensembles |
+| Explainability | SHAP |
+| Automation | GitHub Actions |
+| Dashboard | Streamlit |
+| Hosting | Streamlit Cloud |
+
+---
+
 
 ## **Final Outcome**
 
-The result is a **production-ready air quality forecasting system** that integrates:
+This project delivers a **production-oriented air quality forecasting system** that integrates:
 
-> data ingestion → feature engineering → model training → explainability → automation → visualization
+> data ingestion → feature engineering → multi-horizon forecasting → explainability → automation → visualization
 
-into a **scalable, maintainable, and reproducible pipeline**.
+into a **scalable, maintainable, and reproducible ML pipeline**.
+
+---
+

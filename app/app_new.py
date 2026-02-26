@@ -20,7 +20,7 @@ FEATURE_GROUP_VERSION = 1
 HORIZONS = [24, 48, 72]
 
 
-# these features work fine for v1 of the model
+# these features work fine for v1 v13+ of the model
 BASE_FEATURES = [
     "pm25_lag1", "pm25_lag6", "pm25_lag24",
     "pm25_ma6", "pm25_ma24", "pm25_change_1hr",
@@ -346,8 +346,10 @@ def create_comparison_bar(current_pm25, predictions):
 @st.cache_resource(show_spinner=False)
 def get_hopsworks_project():
     return hopsworks.login(
-        project=os.getenv("HOPSWORKS_PROJECT"),
-        api_key_value=os.getenv("HOPSWORKS_API_KEY")
+        project=os.getenv("HOPSWORKS_PROJECT"),  # Replace with your project name
+        host="eu-west.cloud.hopsworks.ai",
+        port=443,
+        api_key_value=os.getenv("HOPSWORKS_API_KEY")  # Get from Hopsworks UI > Account Settings > API Keys
     )
 
 # 

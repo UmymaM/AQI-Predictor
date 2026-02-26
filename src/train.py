@@ -38,11 +38,13 @@ BASE_FEATURES: List[str] = [
 
 
 def get_hopsworks_project():
-    project_name = os.getenv("HOPSWORKS_PROJECT")
-    api_key = os.getenv("HOPSWORKS_API_KEY")
-    if not project_name or not api_key:
-        raise RuntimeError("HOPSWORKS_PROJECT or HOPSWORKS_API_KEY not set")
-    return hopsworks.login(project=project_name, api_key_value=api_key)
+    project = hopsworks.login(
+        project=os.getenv("HOPSWORKS_PROJECT"),  # Replace with your project name
+        host="eu-west.cloud.hopsworks.ai",
+        port=443,
+        api_key_value=os.getenv("HOPSWORKS_API_KEY")  # Get from Hopsworks UI > Account Settings > API Keys
+    )
+    return project
 
 
 def load_features_from_hopsworks() -> pd.DataFrame:
@@ -243,6 +245,8 @@ def main():
     try:
         print("Training Pipeline")
         report, status = train_and_evaluate()
+        
+        print(f"Training ")
         print(f"Best Model: {report['best_algorithm'].upper()}")
         print(f"Test R²: {report['metrics']['overall']['r2']:.4f}")
         print(f"Test RMSE: {report['metrics']['overall']['rmse']:.2f} µg/m³")

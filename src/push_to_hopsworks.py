@@ -20,7 +20,13 @@ def get_hopsworks_project():
     return hopsworks.login(project=project_name, api_key_value=api_key)
 
 def main():
-    project = get_hopsworks_project()
+    
+    project = hopsworks.login(
+        project=os.getenv("HOPSWORKS_PROJECT"),  # Replace with your project name
+        host="eu-west.cloud.hopsworks.ai",
+        port=443,
+        api_key_value=os.getenv("HOPSWORKS_API_KEY")  # Get from Hopsworks UI > Account Settings > API Keys
+    )
     fs = project.get_feature_store()
 
     # Create/get feature group
@@ -35,7 +41,7 @@ def main():
 
     # Fetch raw data
     print("Running historical backfill")
-    raw_df = fetch_historical("2025-05-02", "2026-01-19")
+    raw_df = fetch_historical("2025-05-02", "2026-02-26")
     
     if raw_df.empty:
         print("No new data to insert.")

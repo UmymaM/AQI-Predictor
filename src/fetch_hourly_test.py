@@ -128,17 +128,16 @@ def build_hourly_features():
     print("Hourly Feature Pipeline")
     try:
         current_df = fetch_current_data()
-        project_name = os.getenv("HOPSWORKS_PROJECT")
-        api_key = os.getenv("HOPSWORKS_API_KEY")
-        project=hopsworks.login(project=project_name, api_key_value=api_key)
+        project = hopsworks.login(
+            project=os.getenv("HOPSWORKS_PROJECT"),  # Replace with your project name
+            host="eu-west.cloud.hopsworks.ai",
+            port=443,
+            api_key_value=os.getenv("HOPSWORKS_API_KEY")  # Get from Hopsworks UI > Account Settings > API Keys
+        )
         fs = project.get_feature_store()
-        fg = fs.get_or_create_feature_group(
+        fg = fs.get_feature_group(
             name=FEATURE_GROUP_NAME,
             version=FEATURE_GROUP_VERSION,
-            primary_key=["timestamp"],
-            event_time="timestamp",
-            description="Hourly AQI features for Bahawalpur",
-            online_enabled=False
         )
         print("Connected to feature group")
 

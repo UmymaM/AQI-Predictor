@@ -6,6 +6,9 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 from train import get_hopsworks_project, load_features_from_hopsworks
+import hopsworks 
+import os
+from fetch_hourly_test import align_dtypes_with_feature_group
 
 FEATURE_GROUP_NAME = "aqi_features_hourly"
 FEATURE_GROUP_VERSION = 1
@@ -72,7 +75,8 @@ def build_features_missed_hrs(df):
     
     required = [
         'pm2_5', 'pm10', 'temperature_2m', 'relative_humidity_2m',
-        'wind_speed_10m', 'pressure_msl', 'precipitation', 'carbon_monoxide',
+        'wind_speed_10m','wind_direction_10m', 'pressure_msl', 'precipitation','cloud_cover_low',
+        'carbon_monoxide','carbon_dioxide',
         'nitrogen_dioxide', 'sulphur_dioxide', 'ozone', 'hour', 'day_of_week',
         'day', 'month', 'pm25_lag1', 'pm25_lag6', 'pm25_lag24', 'pm25_ma6',
         'pm25_ma24', 'pm25_change_1hr']
@@ -94,15 +98,36 @@ def auto_backfill():
     print("Checking for missing data")
     # Connect
     project = get_hopsworks_project()
-    fs = project.get_feature_store()
+    fs = project.get_feature_store(name='aqi_prediction_bwp_featurestore')
+
     fg = fs.get_feature_group(name=FEATURE_GROUP_NAME, version=FEATURE_GROUP_VERSION)
-    
+    # Check current state
+    state = fg.materialization_job.get_state()
+    print(f"Job state: {state}")
+
+    # If not running, trigger it
+    if state not in ["RUNNING", "INITIALIZING"]:
+        fg.materialization_job.run(
+            args="-op offline_fg_materialization -path hdfs:///Projects/AQI_Prediction_BWP/Resources/jobs/aqi_features_hourly_1_offline_fg_materialization/config_1772122602973",
+            await_termination=True  # blocks until done
+        )
+        print("Materialization complete!")
+    else:
+        print("Job still running - wait and check UI")
+        fg.materialization_job.get_final_state()  # blocks until finished
+        print("Finished!")
+
+    # Verify
+    df = fg.read()
+    print(f"Row count: {len(df)}")
+    print(f"Max timestamp: {df['timestamp'].max()}")
     # Load existing data
     df=load_features_from_hopsworks()
     
     # Find all missing hours
     min_ts = df['timestamp'].min()
-    max_ts = df['timestamp'].max()
+    max_ts = pd.Timestamp.now(tz='UTC').floor('H')
+    # max_ts = df['timestamp'].max()
     expected = pd.date_range(start=min_ts, end=max_ts, freq='H')
     existing = set(df['timestamp'])
     missing = sorted([ts for ts in expected if ts not in existing])
@@ -116,6 +141,9 @@ def auto_backfill():
     # Generate filled data
     filled_raw = calculate_smart_averages(df, missing)
     feature_df = build_features_missed_hrs(filled_raw)
+    feature_df = align_dtypes_with_feature_group(feature_df, fg)
+
+    
     
     # Insert
     print("Inserting into Hopsworks")

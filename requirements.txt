@@ -38,4 +38,4 @@ plotly>=5.24.0
 streamlit>=1.40.0
 
 # Hopsworks - Match backend version 4.2.2
-hopsworks[python]==4.2.10
+hopsworks[python]==4.7.*

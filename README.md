@@ -2,9 +2,6 @@
 
 **Multi-horizon PM2.5 forecasting system with 24h, 48h, and 72h predictions**
 
-## **Prediction Dashboard**:
-[https://aqi-predictor-bwp.streamlit.app/](https://aqi-predictor-bwp.streamlit.app/)
-
 ## **Overview**
 
 This project implements an **end-to-end machine learning system** to forecast **PM2.5 concentrations** for the next **24, 48, and 72 hours** in **Bahawalpur, Pakistan**, and converts them into **standardized AQI categories**.
